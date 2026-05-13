@@ -1,0 +1,64 @@
+<view class="page qa-page">
+  <view class="page-title">智能问答与政策知识库</view>
+  <view class="page-subtitle">优先返回标准答案、来源单位和官方链接；涉及敏感信息时请联系负责老师。</view>
+
+  <view class="search-panel card">
+    <view class="search-row">
+      <input class="search-input" value="{{keyword}}" placeholder="输入奖学金、入党、查档、宿舍等关键词" confirm-type="search" bindinput="onKeywordInput" bindconfirm="onSearch" />
+      <button class="primary-button search-button" bindtap="onSearch">搜索</button>
+    </view>
+    <scroll-view class="category-scroll" scroll-x="true" show-scrollbar="false">
+      <view class="category-list">
+        <view class="category-item {{item.activeClass}}" wx:for="{{categoryItems}}" wx:key="name" data-category="{{item.name}}" bindtap="onCategoryTap">{{item.name}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">
+      <text>标准答复</text>
+      <text class="result-count">{{results.length}} 条</text>
+    </view>
+    <view class="knowledge-list" wx:if="{{results.length}}">
+      <view class="knowledge-card card" wx:for="{{results}}" wx:key="id">
+        <view class="knowledge-head">
+          <view class="knowledge-title">{{item.title}}</view>
+          <text class="tag">{{item.category}}</text>
+        </view>
+        <view class="knowledge-answer">{{item.answer}}</view>
+        <view class="sensitive" wx:if="{{item.sensitiveHint}}">{{item.sensitiveHint}}</view>
+        <view class="knowledge-tags">
+          <text class="tag neutral" wx:for="{{item.tags}}" wx:key="*this">{{item}}</text>
+        </view>
+        <view class="knowledge-meta">
+          <text>维护单位：{{item.owner}}</text>
+          <text>更新：{{item.updatedAt}}</text>
+        </view>
+        <button class="secondary-button link-button" data-url="{{item.officialLink}}" bindtap="copyLink">复制官方链接</button>
+      </view>
+    </view>
+    <view class="empty" wx:else>未匹配到标准答复，可换用更短关键词，或联系负责老师补充知识库。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">常用模板</view>
+    <scroll-view class="category-scroll" scroll-x="true" show-scrollbar="false">
+      <view class="category-list compact">
+        <view class="category-item {{item.activeClass}}" wx:for="{{templateCategoryItems}}" wx:key="name" data-category="{{item.name}}" bindtap="onTemplateCategoryTap">{{item.name}}</view>
+      </view>
+    </scroll-view>
+    <view class="template-list">
+      <view class="template-card card" wx:for="{{templates}}" wx:key="id">
+        <view class="template-main">
+          <view class="template-type">{{item.type}}</view>
+          <view class="template-info">
+            <view class="template-name">{{item.name}}</view>
+            <view class="template-desc">{{item.description}}</view>
+            <view class="template-meta">{{item.category}} · {{item.size}} · {{item.updatedAt}}</view>
+          </view>
+        </view>
+        <button class="secondary-button download-button" data-id="{{item.id}}" bindtap="downloadTemplate">下载/打开</button>
+      </view>
+    </view>
+  </view>
+</view>

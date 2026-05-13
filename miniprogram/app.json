@@ -1,0 +1,43 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/qa/qa",
+    "pages/process/process",
+    "pages/quiz/quiz",
+    "pages/mine/mine",
+    "pages/admin/admin"
+  ],
+  "window": {
+    "navigationBarTitleText": "学院学生综合服务平台",
+    "navigationBarBackgroundColor": "#23395d",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f7fb",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#667085",
+    "selectedColor": "#1f5fbf",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/qa/qa",
+        "text": "问答"
+      },
+      {
+        "pagePath": "pages/process/process",
+        "text": "党团"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

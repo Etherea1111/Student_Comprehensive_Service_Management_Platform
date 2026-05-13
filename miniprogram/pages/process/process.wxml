@@ -1,0 +1,79 @@
+<view class="page process-page">
+  <view class="page-title">党团事务流程管理</view>
+  <view class="page-subtitle">展示标准流程、个人当前阶段、已完成动作和下一节点提醒。</view>
+
+  <view class="switch-card card">
+    <view class="segmented">
+      <view class="segment {{partySegmentClass}}" data-type="party" bindtap="switchType">入党流程</view>
+      <view class="segment {{leagueSegmentClass}}" data-type="league" bindtap="switchType">入团流程</view>
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{currentStage}}">
+    <view class="status-card card">
+      <view class="status-top">
+        <view>
+          <view class="status-label">当前阶段</view>
+          <view class="status-title">{{currentStage.name}}</view>
+        </view>
+        <text class="tag success">{{progressPercent}}</text>
+      </view>
+      <view class="status-desc">{{currentStage.description}}</view>
+      <view class="status-meta">
+        <view>
+          <text class="meta-label">进入时间</text>
+          <text>{{progress.startedAt}}</text>
+        </view>
+        <view>
+          <text class="meta-label">下一节点</text>
+          <text>{{progress.nextDeadline}}</text>
+        </view>
+        <view>
+          <text class="meta-label">负责人</text>
+          <text>{{progress.advisor}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{reminder}}">
+    <view class="section-title">关键节点提醒</view>
+    <view class="reminder-card card">
+      <text class="tag warn">{{reminder.date}}</text>
+      <view class="reminder-title">{{reminder.title}}</view>
+      <view class="reminder-text">{{reminder.content}}</view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">流程总览</view>
+    <view class="timeline card">
+      <view class="timeline-item {{item.statusClass}}" wx:for="{{stages}}" wx:key="id">
+        <view class="timeline-marker">
+          <text>{{item.stepNo}}</text>
+        </view>
+        <view class="timeline-body">
+          <view class="timeline-title">{{item.name}}</view>
+          <view class="timeline-desc">{{item.description}}</view>
+          <view class="action-list">
+            <view class="action {{action.doneClass}}" wx:for="{{item.actionItems}}" wx:for-item="action" wx:key="name">
+              <text class="action-dot"></text>
+              <text>{{action.name}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">理论自测</view>
+    <view class="quiz-entry card">
+      <view>
+        <view class="quiz-title">党建与流程基础知识</view>
+        <view class="quiz-desc">题库采用本地示例数据，后续可由管理员导入官方题库。</view>
+      </view>
+      <button class="primary-button quiz-button" bindtap="goQuiz">开始自测</button>
+    </view>
+  </view>
+</view>

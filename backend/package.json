@@ -1,0 +1,24 @@
+{
+  "name": "student-service-platform-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend service for the Student Comprehensive Service Management Platform.",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "db:init": "node scripts/init-db.js",
+    "check": "node --check src/server.js && find src -name '*.js' -not -name 'server.js' -exec node --check {} \\;"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.12.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.23.8"
+  }
+}

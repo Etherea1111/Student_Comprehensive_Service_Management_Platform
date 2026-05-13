@@ -1,0 +1,142 @@
+<view class="page admin-page">
+  <view class="page-title">管理员维护</view>
+  <view class="page-subtitle">用于维护模块一、模块二的公开内容，并为后续模块预留管理接口。</view>
+
+  <view class="admin-user card">
+    <view>
+      <view class="admin-name">{{dashboard.user.name}}</view>
+      <view class="admin-role">{{roleName}} · {{dashboard.user.college}}</view>
+    </view>
+    <text class="tag {{manageTagClass}}">{{manageStatusText}}</text>
+  </view>
+
+  <view class="section">
+    <view class="section-title">维护概览</view>
+    <view class="metrics-grid">
+      <view class="metric card" wx:for="{{dashboard.metrics}}" wx:key="label">
+        <view class="metric-value">{{item.value}}</view>
+        <view class="metric-label">{{item.label}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">上传策略</view>
+    <view class="policy-card card">
+      <view class="policy-row">
+        <text>文件类型</text>
+        <text>{{uploadPolicy.allowedTypesText}}</text>
+      </view>
+      <view class="policy-row">
+        <text>大小上限</text>
+        <text>{{uploadPolicy.maxSizeMB}}MB</text>
+      </view>
+      <view class="policy-row">
+        <text>复核要求</text>
+        <text>{{auditRequiredText}}</text>
+      </view>
+      <view class="policy-note">{{uploadPolicy.ownerRule}}</view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">可维护内容</view>
+    <view class="manage-list">
+      <view class="manage-item card">
+        <view>
+          <view class="manage-title">知识库条目</view>
+          <view class="manage-desc">后续接入后台后支持新增、编辑、上传文件和老师复核。</view>
+        </view>
+        <text class="tag">模块一</text>
+      </view>
+      <view class="manage-item card">
+        <view>
+          <view class="manage-title">模板文件</view>
+          <view class="manage-desc">后续接入对象存储或文件服务，当前保留链接字段。</view>
+        </view>
+        <text class="tag">模块一</text>
+      </view>
+      <view class="manage-item card">
+        <view>
+          <view class="manage-title">党团流程配置</view>
+          <view class="manage-desc">支持节点名称、说明、动作清单和提醒周期的配置化扩展。</view>
+        </view>
+        <text class="tag">模块二</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">知识库录入演示</view>
+    <view class="draft-form card">
+      <view class="form-row">
+        <text class="form-label">问题标题</text>
+        <input class="form-input" value="{{draftForm.title}}" data-field="title" placeholder="如：奖学金评定材料提交时间" bindinput="onDraftInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">分类</text>
+        <input class="form-input" value="{{draftForm.category}}" data-field="category" placeholder="如：奖助学金、党团事务" bindinput="onDraftInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">标签</text>
+        <input class="form-input" value="{{draftForm.tagsText}}" data-field="tagsText" placeholder="用逗号分隔，如：奖学金,评奖评优" bindinput="onDraftInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">标准答复</text>
+        <textarea class="form-textarea" value="{{draftForm.answer}}" data-field="answer" placeholder="录入经老师确认的标准答复，避免自由生成不确定内容" bindinput="onDraftInput"></textarea>
+      </view>
+      <view class="form-row">
+        <text class="form-label">官方链接</text>
+        <input class="form-input" value="{{draftForm.officialLink}}" data-field="officialLink" placeholder="https://..." bindinput="onDraftInput" />
+      </view>
+      <view class="file-row">
+        <view>
+          <view class="file-title">{{selectedFileName}}</view>
+          <view class="file-desc">支持 doc/docx/xls/xlsx/pdf，单个文件不超过 {{uploadPolicy.maxSizeMB}}MB。</view>
+        </view>
+        <button class="secondary-button file-button" bindtap="chooseDraftFile">选择文件</button>
+      </view>
+      <button class="primary-button submit-draft-button" bindtap="submitDraft">提交待复核草稿</button>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">本机草稿</view>
+    <view class="draft-list" wx:if="{{drafts.length}}">
+      <view class="draft-card card" wx:for="{{drafts}}" wx:key="id">
+        <view class="draft-top">
+          <text class="draft-title">{{item.title}}</text>
+          <text class="tag warn">待复核</text>
+        </view>
+        <view class="draft-answer">{{item.answer}}</view>
+        <view class="draft-meta">{{item.category}} · {{item.createdAt}} · {{item.fileName}}</view>
+      </view>
+    </view>
+    <view class="empty" wx:else>暂无本机录入草稿。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">操作日志</view>
+    <view class="log-list" wx:if="{{logs.length}}">
+      <view class="log-card card" wx:for="{{logs}}" wx:key="id">
+        <view class="log-top">
+          <text class="log-action">{{item.action}}</text>
+          <text class="log-time">{{item.createdAt}}</text>
+        </view>
+        <view class="log-detail">{{item.operator}}（{{item.role}}）处理：{{item.target}}</view>
+      </view>
+    </view>
+    <view class="empty" wx:else>当前角色无权查看操作日志。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">后续接口</view>
+    <view class="future-list">
+      <view class="future-card card" wx:for="{{futureModules}}" wx:key="id">
+        <view class="future-name">{{item.name}}</view>
+        <view class="future-desc">{{item.description}}</view>
+        <view class="future-api">{{item.api}}</view>
+      </view>
+    </view>
+  </view>
+</view>

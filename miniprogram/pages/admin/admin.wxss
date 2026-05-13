@@ -1,0 +1,264 @@
+.admin-user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28rpx;
+  padding: 24rpx;
+}
+
+.admin-name {
+  color: #101828;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.admin-role {
+  margin-top: 8rpx;
+  color: #667085;
+}
+
+.metrics-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.metric {
+  width: 49%;
+  margin-bottom: 16rpx;
+  padding: 24rpx;
+}
+
+.metric-value {
+  color: #1f5fbf;
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.metric-label {
+  margin-top: 8rpx;
+  color: #667085;
+}
+
+.policy-card {
+  padding: 8rpx 22rpx 22rpx;
+}
+
+.policy-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #eaecf0;
+}
+
+.policy-row text:first-child {
+  color: #667085;
+}
+
+.policy-note {
+  margin-top: 18rpx;
+  color: #475467;
+  line-height: 1.55;
+}
+
+.manage-list,
+.log-list,
+.future-list,
+.draft-list {
+  display: block;
+}
+
+.manage-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+  padding: 24rpx;
+}
+
+.manage-item > view {
+  flex: 1;
+  min-width: 0;
+  margin-right: 18rpx;
+}
+
+.manage-title,
+.future-name {
+  color: #101828;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.manage-desc,
+.future-desc {
+  margin-top: 8rpx;
+  color: #667085;
+  line-height: 1.55;
+}
+
+.draft-form {
+  padding: 24rpx;
+}
+
+.form-row {
+  display: block;
+  margin-bottom: 18rpx;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 10rpx;
+  color: #344054;
+  font-weight: 700;
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  border: 1rpx solid #d0d5dd;
+  border-radius: 8rpx;
+  background: #ffffff;
+  color: #101828;
+  font-size: 28rpx;
+}
+
+.form-input {
+  min-height: 72rpx;
+  padding: 0 18rpx;
+}
+
+.form-textarea {
+  min-height: 180rpx;
+  padding: 18rpx;
+  line-height: 1.55;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8rpx;
+  padding: 18rpx;
+  border: 1rpx dashed #98a2b3;
+  border-radius: 8rpx;
+  background: #f8fafc;
+}
+
+.file-row > view {
+  flex: 1;
+  min-width: 0;
+  margin-right: 18rpx;
+}
+
+.file-title {
+  color: #101828;
+  font-weight: 700;
+}
+
+.file-desc {
+  margin-top: 6rpx;
+  color: #667085;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.file-button {
+  flex: 0 0 150rpx;
+  min-height: 64rpx;
+  padding: 0 12rpx;
+  font-size: 24rpx;
+}
+
+.submit-draft-button {
+  width: 100%;
+  margin-top: 20rpx;
+}
+
+.draft-card {
+  margin-bottom: 16rpx;
+  padding: 22rpx;
+}
+
+.draft-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.draft-title {
+  flex: 1;
+  color: #101828;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.draft-answer {
+  margin-top: 12rpx;
+  color: #475467;
+  line-height: 1.6;
+}
+
+.draft-meta {
+  margin-top: 12rpx;
+  color: #667085;
+  font-size: 23rpx;
+}
+
+.log-card,
+.future-card {
+  margin-bottom: 16rpx;
+  padding: 22rpx;
+}
+
+.log-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.log-action {
+  color: #101828;
+  font-weight: 700;
+}
+
+.log-time {
+  color: #667085;
+  font-size: 23rpx;
+}
+
+.log-detail {
+  margin-top: 10rpx;
+  color: #475467;
+  line-height: 1.55;
+}
+
+.future-api {
+  margin-top: 10rpx;
+  color: #475467;
+  font-size: 22rpx;
+  word-break: break-all;
+}
+
+@media (min-width: 760px) {
+  .metric {
+    width: 24%;
+  }
+}
+
+@media (max-width: 520px) {
+  .file-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .file-row > view {
+    margin-right: 0;
+    margin-bottom: 16rpx;
+  }
+
+  .file-button {
+    flex: none;
+    width: 100%;
+  }
+}

@@ -1,0 +1,31 @@
+<view class="page quiz-page">
+  <view class="page-title">理论自测</view>
+  <view class="page-subtitle">当前为演示题库，后续可接入管理员导入的官方题库。</view>
+
+  <view class="score-card card" wx:if="{{submitted}}">
+    <view class="score-number">{{result.score}} / {{result.total}}</view>
+    <view class="score-text">本次自测得分</view>
+    <button class="secondary-button retry-button" bindtap="resetQuiz">重新作答</button>
+  </view>
+
+  <view class="question-list">
+    <view class="question-card card" wx:for="{{questions}}" wx:key="id" wx:for-index="qIndex">
+      <view class="question-head">
+        <text class="tag neutral">第 {{qIndex + 1}} 题</text>
+        <text class="tag {{item.statusClass}}" wx:if="{{submitted}}">{{item.statusText}}</text>
+      </view>
+      <view class="question-stem">{{item.stem}}</view>
+      <radio-group class="option-list" data-index="{{qIndex}}" bindchange="onAnswerChange">
+        <label class="option {{option.selectedClass}}" wx:for="{{item.optionItems}}" wx:for-item="option" wx:key="value">
+          <radio value="{{option.value}}" checked="{{option.checked}}" disabled="{{submitted}}" color="#1f5fbf" />
+          <text>{{option.label}}</text>
+        </label>
+      </radio-group>
+      <view class="explanation" wx:if="{{submitted}}">
+        正确答案：{{item.correctAnswerText}}。{{item.explanation}}
+      </view>
+    </view>
+  </view>
+
+  <button class="primary-button submit-button" wx:if="{{!submitted}}" bindtap="submitQuiz">提交答案</button>
+</view>
