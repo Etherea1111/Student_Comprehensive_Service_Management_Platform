@@ -1,6 +1,7 @@
 .score-card {
   margin-top: 28rpx;
   padding: 30rpx;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   text-align: center;
 }
 
@@ -23,6 +24,25 @@
   font-size: 24rpx;
 }
 
+.answer-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28rpx;
+  padding: 22rpx 24rpx;
+}
+
+.answer-progress-title {
+  color: #101828;
+  font-weight: 700;
+}
+
+.answer-progress-text {
+  margin-top: 6rpx;
+  color: #667085;
+  font-size: 24rpx;
+}
+
 .question-list {
   display: block;
   margin-top: 28rpx;
@@ -30,7 +50,7 @@
 
 .question-card {
   margin-bottom: 18rpx;
-  padding: 24rpx;
+  padding: 26rpx;
 }
 
 .question-head {
@@ -58,7 +78,7 @@
   min-height: 76rpx;
   margin-bottom: 14rpx;
   padding: 14rpx 16rpx;
-  border: 1rpx solid #d0d5dd;
+  border: 1rpx solid #c9d3df;
   border-radius: 8rpx;
   background: #ffffff;
   color: #344054;
@@ -72,6 +92,8 @@
 .option.selected {
   border-color: #1f5fbf;
   background: #eaf1ff;
+  color: #1f5fbf;
+  font-weight: 600;
 }
 
 .explanation {
@@ -81,6 +103,13 @@
   background: #f2f6ff;
   color: #344054;
   line-height: 1.6;
+}
+
+.submit-bar {
+  position: sticky;
+  bottom: 0;
+  padding: 18rpx 0 8rpx;
+  background: linear-gradient(180deg, rgba(238, 243, 248, 0) 0%, #eef3f8 42%);
 }
 
 .submit-button {

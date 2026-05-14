@@ -1,6 +1,7 @@
 const adminService = require('../../services/adminService')
 const profileService = require('../../services/profileService')
 const knowledgeService = require('../../services/knowledgeService')
+const authGuard = require('../../utils/authGuard')
 
 const emptyDraftForm = {
   title: '',
@@ -31,6 +32,9 @@ Page({
   },
 
   onLoad() {
+    if (!authGuard.ensureLoggedIn()) {
+      return
+    }
     Promise.all([
       adminService.fetchDashboard(),
       adminService.fetchUploadPolicy(),

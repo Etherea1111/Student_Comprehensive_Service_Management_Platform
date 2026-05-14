@@ -18,6 +18,13 @@ function setToken(token) {
   wx.setStorageSync(env.tokenStorageKey, token)
 }
 
+function clearToken() {
+  if (typeof wx === 'undefined' || !wx.removeStorageSync) {
+    return
+  }
+  wx.removeStorageSync(env.tokenStorageKey)
+}
+
 function request(options) {
   if (!isApiEnabled()) {
     return Promise.reject(new Error('API is not configured'))
@@ -50,5 +57,6 @@ module.exports = {
   isApiEnabled,
   request,
   getToken,
-  setToken
+  setToken,
+  clearToken
 }

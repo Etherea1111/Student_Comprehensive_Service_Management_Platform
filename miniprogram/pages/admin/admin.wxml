@@ -1,6 +1,8 @@
 <view class="page admin-page">
-  <view class="page-title">管理员维护</view>
-  <view class="page-subtitle">用于维护模块一、模块二的公开内容，并为后续模块预留管理接口。</view>
+  <view class="page-header">
+    <view class="page-title">管理员维护</view>
+    <view class="page-subtitle">用于维护模块一、模块二的公开内容，并为后续模块预留管理接口。</view>
+  </view>
 
   <view class="admin-user card">
     <view>
@@ -11,7 +13,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">维护概览</view>
+    <view class="section-title"><text>维护概览</text></view>
     <view class="metrics-grid">
       <view class="metric card" wx:for="{{dashboard.metrics}}" wx:key="label">
         <view class="metric-value">{{item.value}}</view>
@@ -21,7 +23,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">上传策略</view>
+    <view class="section-title"><text>上传策略</text></view>
     <view class="policy-card card">
       <view class="policy-row">
         <text>文件类型</text>
@@ -40,7 +42,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">可维护内容</view>
+    <view class="section-title"><text>可维护内容</text></view>
     <view class="manage-list">
       <view class="manage-item card">
         <view>
@@ -67,7 +69,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">知识库录入演示</view>
+    <view class="section-title"><text>知识库录入</text></view>
     <view class="draft-form card">
       <view class="form-row">
         <text class="form-label">问题标题</text>
@@ -101,7 +103,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">本机草稿</view>
+    <view class="section-title"><text>本机草稿</text></view>
     <view class="draft-list" wx:if="{{drafts.length}}">
       <view class="draft-card card" wx:for="{{drafts}}" wx:key="id">
         <view class="draft-top">
@@ -116,7 +118,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">操作日志</view>
+    <view class="section-title"><text>操作日志</text></view>
     <view class="log-list" wx:if="{{logs.length}}">
       <view class="log-card card" wx:for="{{logs}}" wx:key="id">
         <view class="log-top">
@@ -130,7 +132,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">后续接口</view>
+    <view class="section-title"><text>后续接口</text></view>
     <view class="future-list">
       <view class="future-card card" wx:for="{{futureModules}}" wx:key="id">
         <view class="future-name">{{item.name}}</view>

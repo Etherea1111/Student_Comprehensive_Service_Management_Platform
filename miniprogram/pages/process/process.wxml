@@ -1,6 +1,8 @@
 <view class="page process-page">
-  <view class="page-title">党团事务流程管理</view>
-  <view class="page-subtitle">展示标准流程、个人当前阶段、已完成动作和下一节点提醒。</view>
+  <view class="page-header">
+    <view class="page-title">党团事务流程管理</view>
+    <view class="page-subtitle">展示标准流程、个人当前阶段、已完成动作和下一节点提醒。</view>
+  </view>
 
   <view class="switch-card card">
     <view class="segmented">
@@ -15,10 +17,14 @@
         <view>
           <view class="status-label">当前阶段</view>
           <view class="status-title">{{currentStage.name}}</view>
+          <view class="status-stage-count">{{stageCountText}}</view>
         </view>
         <text class="tag success">{{progressPercent}}</text>
       </view>
       <view class="status-desc">{{currentStage.description}}</view>
+      <view class="progress-track">
+        <view class="progress-fill" style="width: {{progressPercent}};"></view>
+      </view>
       <view class="status-meta">
         <view>
           <text class="meta-label">进入时间</text>
@@ -37,16 +43,19 @@
   </view>
 
   <view class="section" wx:if="{{reminder}}">
-    <view class="section-title">关键节点提醒</view>
+    <view class="section-title"><text>关键节点提醒</text></view>
     <view class="reminder-card card">
-      <text class="tag warn">{{reminder.date}}</text>
+      <view class="reminder-card-head">
+        <text class="tag warn">{{reminder.date}}</text>
+        <text class="reminder-owner">{{reminder.advisor}}</text>
+      </view>
       <view class="reminder-title">{{reminder.title}}</view>
       <view class="reminder-text">{{reminder.content}}</view>
     </view>
   </view>
 
   <view class="section">
-    <view class="section-title">流程总览</view>
+    <view class="section-title"><text>流程总览</text></view>
     <view class="timeline card">
       <view class="timeline-item {{item.statusClass}}" wx:for="{{stages}}" wx:key="id">
         <view class="timeline-marker">
@@ -67,7 +76,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">理论自测</view>
+    <view class="section-title"><text>理论自测</text></view>
     <view class="quiz-entry card">
       <view>
         <view class="quiz-title">党建与流程基础知识</view>

@@ -1,4 +1,6 @@
 const profileService = require('../../services/profileService')
+const authService = require('../../services/authService')
+const authGuard = require('../../utils/authGuard')
 
 Page({
   data: {
@@ -10,6 +12,9 @@ Page({
   },
 
   onLoad() {
+    if (!authGuard.ensureLoggedIn()) {
+      return
+    }
     profileService.fetchCurrentUser().then((user) => {
       const permissions = user.permissions || []
       this.setData({
@@ -40,6 +45,19 @@ Page({
   goAdmin() {
     wx.navigateTo({
       url: '/pages/admin/admin'
+    })
+  },
+
+  goChangePassword() {
+    wx.navigateTo({
+      url: '/pages/change-password/change-password'
+    })
+  },
+
+  logout() {
+    authService.logout()
+    wx.reLaunch({
+      url: '/pages/login/login'
     })
   }
 })

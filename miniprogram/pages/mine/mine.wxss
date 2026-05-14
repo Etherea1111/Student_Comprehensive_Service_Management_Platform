@@ -2,6 +2,7 @@
   display: flex;
   align-items: center;
   padding: 28rpx;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .avatar {
@@ -11,7 +12,7 @@
   width: 104rpx;
   height: 104rpx;
   border-radius: 8rpx;
-  background: #23395d;
+  background: linear-gradient(135deg, #23395d 0%, #1f5fbf 100%);
   color: #ffffff;
   font-size: 38rpx;
   font-weight: 700;
@@ -77,6 +78,34 @@
   padding: 24rpx;
 }
 
+.action-item > view:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 66rpx;
+  height: 66rpx;
+  margin-right: 18rpx;
+  border-radius: 8rpx;
+  background: #eaf1ff;
+  color: #1f5fbf;
+  font-weight: 700;
+}
+
+.action-icon.green {
+  background: #e7f8ef;
+  color: #067647;
+}
+
+.action-icon.gray {
+  background: #eef2f6;
+  color: #475467;
+}
+
 .action-title {
   color: #101828;
   font-size: 30rpx;
@@ -97,6 +126,7 @@
 
 .privacy {
   padding: 24rpx;
+  border-left: 8rpx solid #1f5fbf;
   color: #475467;
   line-height: 1.65;
 }

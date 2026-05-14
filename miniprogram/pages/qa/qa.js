@@ -1,5 +1,6 @@
 const knowledgeService = require('../../services/knowledgeService')
 const templateService = require('../../services/templateService')
+const authGuard = require('../../utils/authGuard')
 
 Page({
   data: {
@@ -15,6 +16,9 @@ Page({
   },
 
   onLoad() {
+    if (!authGuard.ensureLoggedIn()) {
+      return
+    }
     knowledgeService.fetchCategories().then((categories) => {
       this.setData({
         categories,

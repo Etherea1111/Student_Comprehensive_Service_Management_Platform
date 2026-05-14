@@ -1,6 +1,7 @@
 const profileService = require('../../services/profileService')
 const processService = require('../../services/processService')
 const adminService = require('../../services/adminService')
+const authGuard = require('../../utils/authGuard')
 
 Page({
   data: {
@@ -11,6 +12,9 @@ Page({
   },
 
   onLoad() {
+    if (!authGuard.ensureLoggedIn()) {
+      return
+    }
     profileService.fetchCurrentUser().then((user) => {
       this.setData({
         user,

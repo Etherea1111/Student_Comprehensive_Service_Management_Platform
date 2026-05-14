@@ -1,0 +1,134 @@
+.login-hero {
+  min-height: 330rpx;
+  padding: 34rpx 32rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(135deg, #1f2d46 0%, #1f5fbf 58%, #2d7d78 100%);
+  color: #ffffff;
+}
+
+.login-badge {
+  display: inline-flex;
+  min-height: 42rpx;
+  padding: 0 16rpx;
+  align-items: center;
+  border: 1rpx solid rgba(255, 255, 255, 0.42);
+  border-radius: 6rpx;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 22rpx;
+}
+
+.login-title {
+  margin-top: 30rpx;
+  font-size: 46rpx;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.login-subtitle {
+  margin-top: 16rpx;
+  color: rgba(255, 255, 255, 0.86);
+  line-height: 1.6;
+}
+
+.login-panel {
+  margin-top: 28rpx;
+  padding: 24rpx;
+}
+
+.login-tabs {
+  display: flex;
+  padding: 8rpx;
+  border-radius: 8rpx;
+  background: #eef2f6;
+}
+
+.login-tab {
+  flex: 1;
+  min-height: 66rpx;
+  border-radius: 8rpx;
+  color: #475467;
+  font-weight: 700;
+  line-height: 66rpx;
+  text-align: center;
+}
+
+.login-tab.active {
+  background: #ffffff;
+  color: #1f5fbf;
+  box-shadow: 0 6rpx 16rpx rgba(16, 24, 40, 0.08);
+}
+
+.wechat-login,
+.password-login {
+  margin-top: 28rpx;
+}
+
+.login-method-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 8rpx;
+  background: #e7f8ef;
+  color: #067647;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.login-method-title {
+  margin-top: 20rpx;
+  color: #101828;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.login-method-desc {
+  margin-top: 12rpx;
+  color: #667085;
+  line-height: 1.6;
+}
+
+.form-row {
+  margin-bottom: 18rpx;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 10rpx;
+  color: #344054;
+  font-weight: 700;
+}
+
+.form-input {
+  width: 100%;
+  min-height: 80rpx;
+  padding: 0 20rpx;
+  border: 1rpx solid #b8c2d0;
+  border-radius: 8rpx;
+  background: #ffffff;
+  color: #101828;
+  font-size: 28rpx;
+}
+
+.full-button {
+  width: 100%;
+  margin-top: 22rpx;
+}
+
+.login-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 22rpx;
+  color: #1f5fbf;
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.login-note {
+  margin-top: 24rpx;
+  padding: 22rpx;
+  border-left: 8rpx solid #f2a93b;
+  color: #475467;
+  line-height: 1.65;
+}

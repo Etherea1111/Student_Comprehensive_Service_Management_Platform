@@ -22,10 +22,15 @@ function notFound(message = 'Not found') {
   return new AppError(404, message)
 }
 
+function conflict(message = 'Conflict') {
+  return new AppError(409, message)
+}
+
 module.exports = {
   AppError,
   badRequest,
   unauthorized,
   forbidden,
-  notFound
+  notFound,
+  conflict
 }

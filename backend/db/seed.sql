@@ -26,11 +26,24 @@ insert into students (
   '在读'
 ) on conflict (student_no) do nothing;
 
-insert into users (openid, student_id, display_name, role, extra_permissions)
-select 'mock-openid-u2024001', id, '李同学', 'class_leader', '[]'
+insert into users (openid, student_id, display_name, role, password_hash, must_change_password, extra_permissions)
+select
+  'mock-openid-u2024001',
+  id,
+  '李同学',
+  'class_leader',
+  'pbkdf2$120000$e8bb5c88f9e4e0f9110c0e5d5c1d319e$4dca469d5eaa30e88e325668b5f04df9af890213dd83a9fa5c1d807850ea6123db481614457fc9ef7b837e15869a7c37394f2d065052c21341671d293cdf0c84',
+  true,
+  '[]'
 from students
 where student_no = '2024001001'
-on conflict (openid) do nothing;
+on conflict (student_id)
+do update set
+  openid = coalesce(users.openid, excluded.openid),
+  display_name = excluded.display_name,
+  role = excluded.role,
+  password_hash = coalesce(users.password_hash, excluded.password_hash),
+  must_change_password = users.must_change_password;
 
 insert into knowledge_items (title, category, tags_text, keywords_text, answer, official_link, owner, status)
 values

@@ -3,6 +3,9 @@ const db = require('../db/pool')
 const { badRequest } = require('../utils/errors')
 const quizService = require('./quizService')
 const { encryptField } = require('../utils/cryptoField')
+const { hashPassword } = require('../utils/password')
+
+const initialPassword = process.env.INITIAL_STUDENT_PASSWORD || 'RUC@123456'
 
 const answerMap = {
   A: 0,
@@ -178,6 +181,23 @@ async function importStudents(filePath, operator) {
           item.remark || null,
           operator.id
         ]
+      )
+      const studentResult = await client.query('select id from students where student_no = $1', [item.studentNo])
+      await client.query(
+        `
+          insert into users (student_id, display_name, role, password_hash, must_change_password)
+          values ($1, $2, 'student', $3, true)
+          on conflict (student_id)
+          do update set
+            display_name = excluded.display_name,
+            password_hash = coalesce(users.password_hash, excluded.password_hash),
+            must_change_password = case
+              when users.password_hash is null then true
+              else users.must_change_password
+            end,
+            updated_at = now()
+        `,
+        [studentResult.rows[0].id, item.name, hashPassword(initialPassword)]
       )
       imported += 1
     }

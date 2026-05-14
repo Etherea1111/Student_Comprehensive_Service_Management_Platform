@@ -1,6 +1,6 @@
 page {
   min-height: 100%;
-  background: #f5f7fb;
+  background: #eef3f8;
   color: #1d2939;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 28rpx;
@@ -19,7 +19,11 @@ textarea {
   max-width: 960rpx;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 28rpx 28rpx 56rpx;
+  padding: 30rpx 28rpx 64rpx;
+}
+
+.page-header {
+  padding: 6rpx 2rpx 8rpx;
 }
 
 .page-title {
@@ -30,30 +34,54 @@ textarea {
 }
 
 .page-subtitle {
-  margin-top: 10rpx;
+  margin-top: 12rpx;
   color: #667085;
   line-height: 1.55;
 }
 
 .section {
-  margin-top: 28rpx;
+  margin-top: 32rpx;
 }
 
 .section-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16rpx;
+  margin-bottom: 18rpx;
   font-size: 32rpx;
   font-weight: 700;
   color: #101828;
 }
 
+.section-title::before {
+  width: 8rpx;
+  height: 28rpx;
+  margin-right: 12rpx;
+  border-radius: 8rpx;
+  background: #1f5fbf;
+  content: "";
+}
+
+.section-title > text:first-child,
+.section-title > view:first-child {
+  flex: 1;
+}
+
 .card {
-  border: 1rpx solid #d0d5dd;
+  border: 1rpx solid rgba(152, 162, 179, 0.28);
   border-radius: 8rpx;
   background: #ffffff;
-  box-shadow: 0 8rpx 24rpx rgba(16, 24, 40, 0.05);
+  box-shadow: 0 10rpx 28rpx rgba(16, 24, 40, 0.06);
+}
+
+.card-pressable {
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.card-pressable:active {
+  border-color: rgba(31, 95, 191, 0.38);
+  box-shadow: 0 6rpx 16rpx rgba(16, 24, 40, 0.08);
+  transform: translateY(2rpx);
 }
 
 .muted {
@@ -63,13 +91,14 @@ textarea {
 .tag {
   display: inline-flex;
   align-items: center;
-  min-height: 40rpx;
-  padding: 0 14rpx;
+  min-height: 42rpx;
+  padding: 0 16rpx;
   border-radius: 6rpx;
   background: #eaf1ff;
   color: #1f5fbf;
   font-size: 22rpx;
-  line-height: 40rpx;
+  line-height: 42rpx;
+  white-space: nowrap;
 }
 
 .tag.warn {
@@ -97,16 +126,18 @@ textarea {
   margin: 0;
   border-radius: 8rpx;
   font-size: 28rpx;
+  font-weight: 600;
   line-height: 1.2;
 }
 
 .primary-button {
-  background: #1f5fbf;
+  background: linear-gradient(180deg, #2468c9 0%, #1e57ae 100%);
   color: #ffffff;
+  box-shadow: 0 8rpx 18rpx rgba(31, 95, 191, 0.22);
 }
 
 .secondary-button {
-  border: 1rpx solid #98a2b3;
+  border: 1rpx solid #b8c2d0;
   background: #ffffff;
   color: #344054;
 }
@@ -116,6 +147,13 @@ textarea {
   padding: 0 8rpx;
   background: transparent;
   color: #1f5fbf;
+  font-weight: 600;
+}
+
+.primary-button:active,
+.secondary-button:active,
+.text-button:active {
+  opacity: 0.78;
 }
 
 button::after {
@@ -123,9 +161,10 @@ button::after {
 }
 
 .empty {
-  padding: 42rpx 28rpx;
-  border: 1rpx dashed #98a2b3;
+  padding: 46rpx 30rpx;
+  border: 1rpx dashed #a8b3c2;
   border-radius: 8rpx;
+  background: rgba(255, 255, 255, 0.62);
   color: #667085;
   text-align: center;
   line-height: 1.6;
@@ -134,4 +173,16 @@ button::after {
 .divider {
   height: 1rpx;
   background: #eaecf0;
+}
+
+.surface-band {
+  margin-left: -28rpx;
+  margin-right: -28rpx;
+  padding-left: 28rpx;
+  padding-right: 28rpx;
+}
+
+input,
+textarea {
+  caret-color: #1f5fbf;
 }

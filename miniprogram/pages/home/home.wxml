@@ -1,7 +1,10 @@
 <view class="page home-page">
   <view class="hero">
     <view class="hero-content">
-      <view class="eyebrow">信息学院</view>
+      <view class="hero-top">
+        <view class="eyebrow">信息学院</view>
+        <view class="hero-status">已实名</view>
+      </view>
       <view class="hero-title">学生综合服务与党团管理平台</view>
       <view class="hero-desc">围绕政策问答、材料模板、党团流程和节点提醒提供一站式服务。</view>
       <view class="hero-meta">
@@ -9,21 +12,33 @@
         <text>{{user.major}}</text>
         <text>{{roleName}}</text>
       </view>
+      <view class="hero-actions">
+        <button class="primary-button hero-button" bindtap="goQa">查询政策</button>
+        <button class="secondary-button hero-button ghost" bindtap="goProcess">查看流程</button>
+      </view>
     </view>
   </view>
 
   <view class="section">
-    <view class="section-title">核心模块</view>
+    <view class="section-title"><text>核心模块</text></view>
     <view class="module-grid">
-      <view class="module-card card" bindtap="goQa">
-        <view class="module-icon qa">问</view>
+      <view class="module-card card card-pressable" bindtap="goQa">
+        <view class="module-top">
+          <view class="module-icon qa">问</view>
+          <text class="tag">模块一</text>
+        </view>
         <view class="module-title">智能问答与政策知识库</view>
         <view class="module-desc">按关键词检索政策、标准答复和官方链接，支持常用模板下载。</view>
+        <view class="module-foot">标准答复优先</view>
       </view>
-      <view class="module-card card" bindtap="goProcess">
-        <view class="module-icon process">党</view>
+      <view class="module-card card card-pressable" bindtap="goProcess">
+        <view class="module-top">
+          <view class="module-icon process">党</view>
+          <text class="tag success">模块二</text>
+        </view>
         <view class="module-title">党团事务流程管理</view>
         <view class="module-desc">展示入党入团流程、个人阶段、待办动作和关键节点提醒。</view>
+        <view class="module-foot">节点留痕提醒</view>
       </view>
     </view>
   </view>
@@ -45,7 +60,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">后续模块预留</view>
+    <view class="section-title"><text>后续模块预留</text></view>
     <view class="reserved-list">
       <view class="reserved-item card" wx:for="{{futureModules}}" wx:key="id">
         <view class="reserved-top">

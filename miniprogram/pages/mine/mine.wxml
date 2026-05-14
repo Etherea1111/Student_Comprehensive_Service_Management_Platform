@@ -12,7 +12,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">账号与权限</view>
+    <view class="section-title"><text>账号与权限</text></view>
     <view class="info-card card">
       <view class="info-row">
         <text>学院</text>
@@ -34,26 +34,45 @@
   </view>
 
   <view class="section">
-    <view class="section-title">快捷入口</view>
+    <view class="section-title"><text>快捷入口</text></view>
     <view class="action-list">
-      <view class="action-item card" bindtap="goQa">
+      <view class="action-item card card-pressable" bindtap="goQa">
+        <view class="action-icon">问</view>
         <view>
           <view class="action-title">政策问答与模板</view>
           <view class="action-desc">查询标准答复、复制模板下载链接。</view>
         </view>
         <text class="arrow">›</text>
       </view>
-      <view class="action-item card" bindtap="goProcess">
+      <view class="action-item card card-pressable" bindtap="goProcess">
+        <view class="action-icon green">党</view>
         <view>
           <view class="action-title">我的党团流程</view>
           <view class="action-desc">查看阶段进度、材料动作和节点提醒。</view>
         </view>
         <text class="arrow">›</text>
       </view>
-      <view class="action-item card" wx:if="{{canEnterAdmin}}" bindtap="goAdmin">
+      <view class="action-item card card-pressable" wx:if="{{canEnterAdmin}}" bindtap="goAdmin">
+        <view class="action-icon gray">管</view>
         <view>
           <view class="action-title">管理员维护</view>
           <view class="action-desc">维护知识库、模板、流程配置，查看操作日志。</view>
+        </view>
+        <text class="arrow">›</text>
+      </view>
+      <view class="action-item card card-pressable" bindtap="goChangePassword">
+        <view class="action-icon gray">密</view>
+        <view>
+          <view class="action-title">修改密码</view>
+          <view class="action-desc">更新学号密码登录凭据。</view>
+        </view>
+        <text class="arrow">›</text>
+      </view>
+      <view class="action-item card card-pressable" bindtap="logout">
+        <view class="action-icon gray">退</view>
+        <view>
+          <view class="action-title">退出登录</view>
+          <view class="action-desc">清除本机登录状态并返回登录页。</view>
         </view>
         <text class="arrow">›</text>
       </view>
@@ -61,7 +80,7 @@
   </view>
 
   <view class="section">
-    <view class="section-title">隐私说明</view>
+    <view class="section-title"><text>隐私说明</text></view>
     <view class="privacy card">
       身份证号、手机号、生源地、户籍、休学与延毕等敏感信息不在学生端公开展示；老师和管理员查看敏感数据时应按权限控制并保留操作记录。
     </view>

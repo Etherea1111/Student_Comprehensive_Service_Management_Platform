@@ -1,6 +1,14 @@
 .search-panel {
   margin-top: 28rpx;
-  padding: 22rpx;
+  padding: 24rpx;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.search-label {
+  margin-bottom: 14rpx;
+  color: #344054;
+  font-size: 25rpx;
+  font-weight: 700;
 }
 
 .search-row {
@@ -11,9 +19,9 @@
 .search-input {
   flex: 1;
   width: 100%;
-  min-height: 76rpx;
+  min-height: 82rpx;
   padding: 0 22rpx;
-  border: 1rpx solid #d0d5dd;
+  border: 1rpx solid #b8c2d0;
   border-radius: 8rpx;
   background: #ffffff;
   color: #101828;
@@ -22,6 +30,7 @@
 
 .search-button {
   width: 148rpx;
+  min-height: 82rpx;
   margin-left: 16rpx;
   padding: 0;
 }
@@ -45,9 +54,9 @@
   display: inline-flex;
   align-items: center;
   margin-right: 14rpx;
-  min-height: 58rpx;
+  min-height: 60rpx;
   padding: 0 22rpx;
-  border: 1rpx solid #d0d5dd;
+  border: 1rpx solid #c9d3df;
   border-radius: 8rpx;
   background: #ffffff;
   color: #475467;
@@ -75,7 +84,7 @@
 .knowledge-card,
 .template-card {
   margin-bottom: 18rpx;
-  padding: 24rpx;
+  padding: 26rpx;
 }
 
 .knowledge-head {
@@ -84,16 +93,30 @@
   justify-content: space-between;
 }
 
-.knowledge-title {
+.knowledge-title-wrap {
   flex: 1;
+  min-width: 0;
+  margin-right: 18rpx;
+}
+
+.knowledge-title {
   color: #101828;
   font-size: 31rpx;
   font-weight: 700;
   line-height: 1.35;
 }
 
+.knowledge-source {
+  margin-top: 8rpx;
+  color: #667085;
+  font-size: 23rpx;
+}
+
 .knowledge-answer {
   margin-top: 16rpx;
+  padding: 18rpx;
+  border-radius: 8rpx;
+  background: #f8fafc;
   color: #344054;
   line-height: 1.65;
 }
@@ -133,10 +156,31 @@
 .link-button {
   width: 210rpx;
   min-height: 64rpx;
-  margin-top: 20rpx;
   margin-left: 0;
   padding: 0 16rpx;
   font-size: 24rpx;
+}
+
+.knowledge-actions,
+.template-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18rpx;
+}
+
+.template-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.template-card::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8rpx;
+  background: #2d7d78;
+  content: "";
 }
 
 .template-main {
@@ -151,8 +195,8 @@
   width: 84rpx;
   height: 84rpx;
   border-radius: 8rpx;
-  background: #eef2f6;
-  color: #344054;
+  background: #e7f8ef;
+  color: #067647;
   font-size: 24rpx;
   font-weight: 700;
   margin-right: 18rpx;
@@ -185,8 +229,28 @@
 .download-button {
   width: 210rpx;
   min-height: 64rpx;
-  margin-top: 18rpx;
-  margin-left: 102rpx;
   padding: 0 16rpx;
   font-size: 24rpx;
+}
+
+@media (max-width: 520px) {
+  .search-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .search-button {
+    width: 100%;
+    margin-top: 14rpx;
+    margin-left: 0;
+  }
+
+  .knowledge-head {
+    display: block;
+  }
+
+  .knowledge-title-wrap {
+    margin-right: 0;
+    margin-bottom: 12rpx;
+  }
 }

@@ -1,11 +1,21 @@
 <view class="page quiz-page">
-  <view class="page-title">理论自测</view>
-  <view class="page-subtitle">当前为演示题库，后续可接入管理员导入的官方题库。</view>
+  <view class="page-header">
+    <view class="page-title">理论自测</view>
+    <view class="page-subtitle">当前为演示题库，后续可接入管理员导入的官方题库。</view>
+  </view>
 
   <view class="score-card card" wx:if="{{submitted}}">
     <view class="score-number">{{result.score}} / {{result.total}}</view>
     <view class="score-text">本次自测得分</view>
     <button class="secondary-button retry-button" bindtap="resetQuiz">重新作答</button>
+  </view>
+
+  <view class="answer-progress card" wx:if="{{!submitted}}">
+    <view>
+      <view class="answer-progress-title">作答进度</view>
+      <view class="answer-progress-text">已完成 {{answeredCount}} / {{questions.length}} 题</view>
+    </view>
+    <text class="tag neutral">{{answerProgressText}}</text>
   </view>
 
   <view class="question-list">
@@ -27,5 +37,7 @@
     </view>
   </view>
 
-  <button class="primary-button submit-button" wx:if="{{!submitted}}" bindtap="submitQuiz">提交答案</button>
+  <view class="submit-bar" wx:if="{{!submitted}}">
+    <button class="primary-button submit-button" bindtap="submitQuiz">提交答案</button>
+  </view>
 </view>

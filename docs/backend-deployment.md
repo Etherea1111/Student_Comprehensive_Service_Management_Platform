@@ -5,6 +5,7 @@
 当前仓库已包含可继续落地部署的 Node.js 后端骨架，覆盖以下能力：
 
 - 微信登录与学生实名绑定接口。
+- 学号密码登录、修改密码、找回密码接口。
 - JWT 登录态。
 - 角色权限校验。
 - 学生信息 Excel 导入预览与正式导入。
@@ -100,8 +101,18 @@ module.exports = {
 ```text
 POST /api/auth/wechat-login
 POST /api/auth/bind-student
+POST /api/auth/password-login
+POST /api/auth/change-password
+POST /api/auth/password-reset/request
+POST /api/auth/password-reset/confirm
 GET  /api/profile/me
 ```
+
+说明：
+
+- `bind-student` 需要携带微信登录接口返回的 Bearer token，后端从 token 中读取 openid，不信任前端传入的 openid。
+- 学号密码登录的账号固定为 10 位数字学号。
+- 学生导入时会自动生成学号账号，密码为 `INITIAL_STUDENT_PASSWORD` 对应的哈希值。
 
 ### 知识库与模板
 
@@ -163,7 +174,9 @@ POST /api/imports/quiz
 
 - 不要使用 `.env.example` 中的默认密钥。
 - `JWT_SECRET` 和 `DATA_CRYPTO_KEY` 必须长期妥善保存，尤其是 `DATA_CRYPTO_KEY`，丢失后无法解密历史敏感字段。
-- 微信登录当前保留了本地 mock code 兜底，生产环境应调用微信 `jscode2session` 接口并校验返回结果。
+- 微信登录已支持调用微信 `jscode2session`；未配置 AppID/Secret 或使用 mock code 时才会进入本地开发兜底。
+- `INITIAL_STUDENT_PASSWORD` 用于学生导入和首次账号生成，生产环境应改为学院正式初始密码策略。
+- 找回密码接口在非生产环境会返回重置凭证，生产环境不返回凭证，应改为通过学院确认渠道、短信、邮件或后台审核方式发送。
 - 文件上传建议接入学校内部对象存储或受控文件服务，不建议长期保存在应用服务器本地目录。
 - 操作日志表应限制普通管理员删除权限。
 - 敏感字段在导出、日志和错误报告中必须脱敏。

@@ -31,15 +31,34 @@ create table if not exists students (
 
 create table if not exists users (
   id bigserial primary key,
-  openid varchar(128) not null unique,
-  student_id bigint references students(id),
+  openid varchar(128) unique,
+  student_id bigint unique references students(id),
   display_name varchar(64),
   role varchar(32) not null default 'student',
+  password_hash text,
+  must_change_password boolean not null default true,
   extra_permissions jsonb not null default '[]',
+  password_updated_at timestamp,
+  last_login_at timestamp,
   disabled_at timestamp,
   created_at timestamp not null default now(),
   updated_at timestamp not null default now()
 );
+
+create index if not exists idx_users_student_id on users(student_id);
+create index if not exists idx_users_openid on users(openid);
+
+create table if not exists password_reset_requests (
+  id bigserial primary key,
+  user_id bigint not null references users(id),
+  reset_token varchar(128) not null unique,
+  status varchar(32) not null default 'pending',
+  expires_at timestamp not null,
+  used_at timestamp,
+  created_at timestamp not null default now()
+);
+
+create index if not exists idx_password_reset_user_status on password_reset_requests(user_id, status);
 
 create table if not exists knowledge_items (
   id bigserial primary key,

@@ -1,19 +1,27 @@
 const quizService = require('../../services/quizService')
+const authGuard = require('../../utils/authGuard')
 
 Page({
   data: {
     questions: [],
     answers: [],
+    answeredCount: 0,
+    answerProgressText: '0/0',
     submitted: false,
     result: null
   },
 
   onLoad() {
+    if (!authGuard.ensureLoggedIn()) {
+      return
+    }
     quizService.fetchQuestions().then((questions) => {
       this.rawQuestions = questions
       this.setData({
         questions: this.buildQuestionViewModels(questions, questions.map(() => null), false),
-        answers: questions.map(() => null)
+        answers: questions.map(() => null),
+        answeredCount: 0,
+        answerProgressText: `0/${questions.length}`
       })
     })
   },
@@ -25,7 +33,9 @@ Page({
     answers[index] = value
     this.setData({
       answers,
-      questions: this.buildQuestionViewModels(this.rawQuestions || [], answers, this.data.submitted)
+      questions: this.buildQuestionViewModels(this.rawQuestions || [], answers, this.data.submitted),
+      answeredCount: this.countAnswered(answers),
+      answerProgressText: `${this.countAnswered(answers)}/${answers.length}`
     })
   },
 
@@ -52,6 +62,8 @@ Page({
     const answers = this.data.questions.map(() => null)
     this.setData({
       answers,
+      answeredCount: 0,
+      answerProgressText: `0/${answers.length}`,
       submitted: false,
       result: null,
       questions: this.buildQuestionViewModels(this.rawQuestions || [], answers, false)
@@ -76,5 +88,9 @@ Page({
         submitted
       }
     })
+  },
+
+  countAnswered(answers) {
+    return answers.filter((item) => item !== null).length
   }
 })

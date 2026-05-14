@@ -1,0 +1,22 @@
+<view class="page bind-page">
+  <view class="page-header">
+    <view class="page-title">绑定学生身份</view>
+    <view class="page-subtitle">首次微信登录需要绑定本人学号和姓名，绑定后微信账号与学生账号一对一关联。</view>
+  </view>
+
+  <view class="bind-card card">
+    <view class="form-row">
+      <text class="form-label">学号</text>
+      <input class="form-input" value="{{studentNo}}" maxlength="10" type="number" placeholder="请输入 10 位数字学号" bindinput="onStudentNoInput" />
+    </view>
+    <view class="form-row">
+      <text class="form-label">姓名</text>
+      <input class="form-input" value="{{name}}" placeholder="请输入学生姓名" bindinput="onNameInput" />
+    </view>
+    <button class="primary-button full-button" bindtap="submitBind">确认绑定</button>
+  </view>
+
+  <view class="bind-note card">
+    若系统提示学生信息不存在，请确认学院已导入学生基础信息，或联系辅导员/系统管理员处理。
+  </view>
+</view>

@@ -8,6 +8,6 @@ App({
 
   onLaunch() {
     this.globalData.user = profileService.getCurrentUser()
-    authService.loginWithWechat().catch(() => {})
+    authService.tryAutoLogin().catch(() => {})
   }
 })

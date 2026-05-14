@@ -1,0 +1,42 @@
+<view class="page login-page">
+  <view class="login-hero">
+    <view class="login-badge">信息学院</view>
+    <view class="login-title">学生综合服务与党团管理平台</view>
+    <view class="login-subtitle">请登录后使用政策问答、党团流程、理论自测和管理员维护功能。</view>
+  </view>
+
+  <view class="login-panel card">
+    <view class="login-tabs">
+      <view class="login-tab {{wechatTabClass}}" data-mode="wechat" bindtap="switchMode">微信登录</view>
+      <view class="login-tab {{passwordTabClass}}" data-mode="password" bindtap="switchMode">学号登录</view>
+    </view>
+
+    <view wx:if="{{showWechatLogin}}" class="wechat-login">
+      <view class="login-method-icon">微</view>
+      <view class="login-method-title">默认使用微信登录</view>
+      <view class="login-method-desc">首次微信登录需要绑定本人 10 位学号和姓名。绑定成功后可继续使用微信登录，也可使用学号密码登录。</view>
+      <button class="primary-button full-button" bindtap="handleWechatLogin">微信一键登录</button>
+      <button class="secondary-button full-button" wx:if="{{showDemoEntry}}" bindtap="enterDemo">演示模式进入</button>
+    </view>
+
+    <view wx:if="{{showPasswordLogin}}" class="password-login">
+      <view class="form-row">
+        <text class="form-label">学号</text>
+        <input class="form-input" value="{{studentNo}}" maxlength="10" type="number" placeholder="请输入 10 位数字学号" bindinput="onStudentNoInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">密码</text>
+        <input class="form-input" value="{{password}}" password placeholder="请输入密码" bindinput="onPasswordInput" />
+      </view>
+      <button class="primary-button full-button" bindtap="handlePasswordLogin">登录</button>
+      <view class="login-links">
+        <text bindtap="goForgotPassword">忘记密码</text>
+        <text bindtap="goChangePassword">修改密码</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="login-note card">
+    初始密码由学院统一设置，首次使用学号密码登录后建议立即修改。若无法登录，请联系辅导员或系统管理员核验学生信息。
+  </view>
+</view>

@@ -4,6 +4,7 @@
   justify-content: space-between;
   margin-top: 28rpx;
   padding: 24rpx;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .admin-name {
@@ -27,6 +28,19 @@
   width: 49%;
   margin-bottom: 16rpx;
   padding: 24rpx;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric::after {
+  position: absolute;
+  right: 18rpx;
+  top: 18rpx;
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #d7e6ff;
+  content: "";
 }
 
 .metric-value {
@@ -42,6 +56,7 @@
 
 .policy-card {
   padding: 8rpx 22rpx 22rpx;
+  background: #fbfcfe;
 }
 
 .policy-row {
@@ -76,6 +91,10 @@
   padding: 24rpx;
 }
 
+.manage-item {
+  border-left: 8rpx solid #1f5fbf;
+}
+
 .manage-item > view {
   flex: 1;
   min-width: 0;
@@ -98,6 +117,7 @@
 
 .draft-form {
   padding: 24rpx;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .form-row {
@@ -115,7 +135,7 @@
 .form-input,
 .form-textarea {
   width: 100%;
-  border: 1rpx solid #d0d5dd;
+  border: 1rpx solid #b8c2d0;
   border-radius: 8rpx;
   background: #ffffff;
   color: #101828;
@@ -139,7 +159,7 @@
   justify-content: space-between;
   margin-top: 8rpx;
   padding: 18rpx;
-  border: 1rpx dashed #98a2b3;
+  border: 1rpx dashed #8fa0b7;
   border-radius: 8rpx;
   background: #f8fafc;
 }
@@ -177,6 +197,7 @@
 .draft-card {
   margin-bottom: 16rpx;
   padding: 22rpx;
+  border-left: 8rpx solid #f2a93b;
 }
 
 .draft-top {
@@ -209,6 +230,14 @@
 .future-card {
   margin-bottom: 16rpx;
   padding: 22rpx;
+}
+
+.log-card {
+  background: #fbfcfe;
+}
+
+.future-card {
+  border-left: 8rpx solid #98a2b3;
 }
 
 .log-top {
