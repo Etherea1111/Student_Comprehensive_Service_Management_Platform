@@ -53,9 +53,45 @@ function request(options) {
   })
 }
 
+function uploadFile(options) {
+  if (!isApiEnabled()) {
+    return Promise.reject(new Error('API is not configured'))
+  }
+
+  const token = getToken()
+  return new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: `${env.apiBaseUrl}${options.url}`,
+      filePath: options.filePath,
+      name: options.name || 'file',
+      formData: options.formData || {},
+      header: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.header || {})
+      },
+      success: (res) => {
+        let data = {}
+        try {
+          data = res.data ? JSON.parse(res.data) : {}
+        } catch (error) {
+          reject(new Error('Upload response is not valid JSON'))
+          return
+        }
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(data)
+          return
+        }
+        reject(new Error((data.error && data.error.message) || 'Upload failed'))
+      },
+      fail: reject
+    })
+  })
+}
+
 module.exports = {
   isApiEnabled,
   request,
+  uploadFile,
   getToken,
   setToken,
   clearToken

@@ -79,7 +79,8 @@
 .manage-list,
 .log-list,
 .future-list,
-.draft-list {
+.draft-list,
+.import-list {
   display: block;
 }
 
@@ -113,6 +114,87 @@
   margin-top: 8rpx;
   color: #667085;
   line-height: 1.55;
+}
+
+.import-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+  padding: 24rpx;
+  border-left: 8rpx solid #1f5fbf;
+}
+
+.import-main {
+  flex: 1;
+  min-width: 0;
+  margin-right: 18rpx;
+}
+
+.import-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.import-title {
+  flex: 1;
+  color: #101828;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.import-desc {
+  margin-top: 8rpx;
+  color: #475467;
+  line-height: 1.55;
+}
+
+.import-template,
+.import-permission {
+  margin-top: 8rpx;
+  color: #667085;
+  font-size: 23rpx;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.import-button {
+  flex: 0 0 156rpx;
+  min-height: 64rpx;
+  padding: 0 12rpx;
+  font-size: 24rpx;
+}
+
+.import-result {
+  margin-top: 18rpx;
+  padding: 22rpx;
+  border-left: 8rpx solid #12b76a;
+  background: #f6fef9;
+}
+
+.result-title {
+  color: #101828;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.result-meta {
+  margin-top: 10rpx;
+  color: #475467;
+  line-height: 1.55;
+}
+
+.error-list {
+  margin-top: 14rpx;
+}
+
+.error-item {
+  margin-top: 8rpx;
+  color: #b42318;
+  font-size: 24rpx;
+  line-height: 1.45;
 }
 
 .draft-form {
@@ -279,6 +361,21 @@
   .file-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .import-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .import-main {
+    margin-right: 0;
+    margin-bottom: 16rpx;
+  }
+
+  .import-button {
+    flex: none;
+    width: 100%;
   }
 
   .file-row > view {

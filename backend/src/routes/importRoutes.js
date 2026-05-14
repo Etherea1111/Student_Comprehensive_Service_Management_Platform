@@ -46,6 +46,29 @@ router.post(
 )
 
 router.post(
+  '/process-progress/preview',
+  authenticate,
+  requirePermission('manage_process'),
+  upload.single('file'),
+  asyncHandler(async (req, res) => {
+    requireUploadedFile(req)
+    res.json(await importService.previewProcessProgress(req.file.path))
+  })
+)
+
+router.post(
+  '/process-progress',
+  authenticate,
+  requirePermission('manage_process'),
+  upload.single('file'),
+  audit('import_process_progress', 'process_progress'),
+  asyncHandler(async (req, res) => {
+    requireUploadedFile(req)
+    res.json(await importService.importProcessProgress(req.file.path, req.user))
+  })
+)
+
+router.post(
   '/quiz/preview',
   authenticate,
   requirePermission('import_quiz'),

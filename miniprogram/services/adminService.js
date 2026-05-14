@@ -50,7 +50,7 @@ function fetchOperationLogs() {
 
 function getUploadPolicy() {
   return {
-    allowedTypes: ['doc', 'docx', 'xls', 'xlsx', 'pdf'],
+    allowedTypes: ['doc', 'docx', 'xls', 'xlsx', 'csv', 'pdf'],
     maxSizeMB: 30,
     auditRequired: true,
     ownerRule: '谁上传，谁维护；敏感资料按角色权限控制。'
@@ -72,6 +72,28 @@ function getFutureModules() {
   return futureModules
 }
 
+function uploadImportFile(kind, filePath, preview) {
+  if (!api.isApiEnabled()) {
+    return Promise.reject(new Error('请先配置后端服务地址'))
+  }
+
+  const endpointMap = {
+    students: '/imports/students',
+    processProgress: '/imports/process-progress',
+    quiz: '/imports/quiz'
+  }
+  const endpoint = endpointMap[kind]
+  if (!endpoint) {
+    return Promise.reject(new Error('未知导入类型'))
+  }
+
+  return api.uploadFile({
+    url: preview ? `${endpoint}/preview` : endpoint,
+    filePath,
+    name: 'file'
+  })
+}
+
 module.exports = {
   getDashboard,
   fetchDashboard,
@@ -79,5 +101,6 @@ module.exports = {
   fetchOperationLogs,
   getUploadPolicy,
   fetchUploadPolicy,
-  getFutureModules
+  getFutureModules,
+  uploadImportFile
 }

@@ -9,7 +9,7 @@ const roles = {
 const currentUser = {
   id: 'u2024001',
   openid: 'mock-openid-u2024001',
-  role: roles.CLASS_LEADER,
+  role: roles.SUPER_ADMIN,
   name: '李同学',
   studentNo: '2024001001',
   college: '信息学院',
@@ -25,7 +25,18 @@ const currentUser = {
 const rolePermissions = {
   student: ['read_public', 'read_own_progress', 'quiz'],
   class_leader: ['read_public', 'read_own_progress', 'quiz', 'manage_public_content', 'view_operation_records'],
-  counselor: ['read_public', 'read_sensitive', 'audit_content', 'manage_public_content', 'view_operation_records'],
+  counselor: [
+    'read_public',
+    'read_own_progress',
+    'quiz',
+    'read_sensitive',
+    'audit_content',
+    'manage_public_content',
+    'manage_process',
+    'import_students',
+    'import_quiz',
+    'view_operation_records'
+  ],
   college_leader: ['read_public', 'read_sensitive', 'view_statistics', 'view_operation_records'],
   super_admin: ['read_public', 'read_sensitive', 'manage_all', 'view_operation_records']
 }

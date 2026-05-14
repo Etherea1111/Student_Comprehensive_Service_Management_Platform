@@ -3,7 +3,7 @@ const db = require('../db/pool')
 const { badRequest } = require('../utils/errors')
 const quizService = require('./quizService')
 const { encryptField } = require('../utils/cryptoField')
-const { hashPassword } = require('../utils/password')
+const { hashPassword, validateStudentNo } = require('../utils/password')
 
 const initialPassword = process.env.INITIAL_STUDENT_PASSWORD || 'RUC@123456'
 
@@ -28,6 +28,68 @@ function readRows(filePath) {
 
 function normalizeString(value) {
   return String(value || '').trim()
+}
+
+function normalizeProcessType(value) {
+  const text = normalizeString(value).toLowerCase()
+  const map = {
+    party: 'party',
+    入党: 'party',
+    党建: 'party',
+    党员发展: 'party',
+    league: 'league',
+    入团: 'league',
+    团建: 'league',
+    团员发展: 'league'
+  }
+  return map[text] || text
+}
+
+function parseDateValue(value, line, field, errors) {
+  const text = normalizeString(value)
+  if (!text) {
+    return null
+  }
+
+  const match = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/)
+  if (!match) {
+    errors.push({ line, field, message: '日期格式应为 YYYY-MM-DD' })
+    return null
+  }
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = new Date(Date.UTC(year, month - 1, day))
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    errors.push({ line, field, message: '日期不存在' })
+    return null
+  }
+
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+function parseListValue(value) {
+  const text = normalizeString(value)
+  if (!text) {
+    return []
+  }
+
+  if (text.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(text)
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => normalizeString(item)).filter(Boolean)
+      }
+    } catch (error) {
+      return []
+    }
+  }
+
+  return text
+    .split(/[;,，、|]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 function parseStudents(filePath) {
@@ -63,6 +125,9 @@ function parseStudents(filePath) {
 
     if (!item.studentNo) {
       errors.push({ line, field: 'student_no', message: '学号不能为空' })
+    }
+    if (item.studentNo && !validateStudentNo(item.studentNo)) {
+      errors.push({ line, field: 'student_no', message: '学号必须为 10 位数字' })
     }
     if (!item.name) {
       errors.push({ line, field: 'name', message: '姓名不能为空' })
@@ -209,6 +274,176 @@ async function importStudents(filePath, operator) {
   }
 }
 
+function parseProcessProgress(filePath) {
+  const rows = readRows(filePath)
+  const validRows = []
+  const errors = []
+  const seenRows = new Set()
+
+  rows.forEach((row, index) => {
+    const line = index + 2
+    const processType = normalizeProcessType(row.process_type)
+    const item = {
+      studentNo: normalizeString(row.student_no),
+      name: normalizeString(row.name),
+      processType,
+      currentStageCode: normalizeString(row.current_stage_code),
+      startedAt: parseDateValue(row.started_at, line, 'started_at', errors),
+      nextDeadline: parseDateValue(row.next_deadline, line, 'next_deadline', errors),
+      advisor: normalizeString(row.advisor),
+      completedActions: parseListValue(row.completed_actions),
+      remark: normalizeString(row.remark)
+    }
+    const duplicateKey = `${item.studentNo}:${item.processType}`
+
+    if (!item.studentNo) {
+      errors.push({ line, field: 'student_no', message: '学号不能为空' })
+    }
+    if (item.studentNo && !validateStudentNo(item.studentNo)) {
+      errors.push({ line, field: 'student_no', message: '学号必须为 10 位数字' })
+    }
+    if (!item.name) {
+      errors.push({ line, field: 'name', message: '姓名不能为空' })
+    }
+    if (!['party', 'league'].includes(item.processType)) {
+      errors.push({ line, field: 'process_type', message: '流程类型必须为 party/league 或入党/入团' })
+    }
+    if (!item.currentStageCode) {
+      errors.push({ line, field: 'current_stage_code', message: '新进度节点不能为空' })
+    }
+    if (seenRows.has(duplicateKey)) {
+      errors.push({ line, field: 'student_no/process_type', message: '导入文件中同一学生同一流程重复' })
+    }
+    seenRows.add(duplicateKey)
+
+    if (errors.filter((error) => error.line === line).length === 0) {
+      validRows.push({ line, ...item })
+    }
+  })
+
+  return {
+    total: rows.length,
+    validRows,
+    errors
+  }
+}
+
+async function validateProcessProgressRows(client, parsed) {
+  const errors = [...parsed.errors]
+
+  for (const item of parsed.validRows) {
+    const studentResult = await client.query(
+      `
+        select id
+        from students
+        where student_no = $1 and name = $2 and deleted_at is null
+      `,
+      [item.studentNo, item.name]
+    )
+    if (studentResult.rowCount === 0) {
+      errors.push({ line: item.line, field: 'student_no/name', message: '学生不存在或姓名与学号不匹配' })
+      continue
+    }
+    item.studentId = studentResult.rows[0].id
+
+    const stageResult = await client.query(
+      `
+        select 1
+        from process_stages
+        where process_type = $1 and stage_code = $2 and enabled = true
+      `,
+      [item.processType, item.currentStageCode]
+    )
+    if (stageResult.rowCount === 0) {
+      errors.push({ line: item.line, field: 'current_stage_code', message: '流程节点不存在或已停用' })
+    }
+  }
+
+  return errors
+}
+
+async function previewProcessProgress(filePath) {
+  const parsed = parseProcessProgress(filePath)
+  await db.withTransaction(async (client) => {
+    parsed.errors = await validateProcessProgressRows(client, parsed)
+  })
+  parsed.validRows = parsed.validRows.filter(
+    (item) => !parsed.errors.some((error) => error.line === item.line)
+  )
+  return parsed
+}
+
+async function importProcessProgress(filePath, operator) {
+  const parsed = parseProcessProgress(filePath)
+  await db.withTransaction(async (client) => {
+    parsed.errors = await validateProcessProgressRows(client, parsed)
+  })
+  parsed.validRows = parsed.validRows.filter(
+    (item) => !parsed.errors.some((error) => error.line === item.line)
+  )
+  if (parsed.errors.length > 0) {
+    return {
+      ...parsed,
+      imported: 0
+    }
+  }
+
+  let imported = 0
+  await db.withTransaction(async (client) => {
+    for (const item of parsed.validRows) {
+      await client.query(
+        `
+          insert into process_progress (
+            student_id,
+            process_type,
+            current_stage_code,
+            started_at,
+            completed_actions,
+            next_deadline,
+            advisor
+          )
+          values ($1, $2, $3, $4, $5::jsonb, $6, $7)
+          on conflict (student_id, process_type)
+          do update set
+            current_stage_code = excluded.current_stage_code,
+            started_at = coalesce(excluded.started_at, process_progress.started_at),
+            completed_actions = excluded.completed_actions,
+            next_deadline = coalesce(excluded.next_deadline, process_progress.next_deadline),
+            advisor = coalesce(excluded.advisor, process_progress.advisor),
+            updated_at = now()
+        `,
+        [
+          item.studentId,
+          item.processType,
+          item.currentStageCode,
+          item.startedAt,
+          JSON.stringify(item.completedActions),
+          item.nextDeadline,
+          item.advisor || null
+        ]
+      )
+      await client.query(
+        `
+          update students
+          set party_stage = case when $2 = 'party' then $3 else party_stage end,
+              league_stage = case when $2 = 'league' then $3 else league_stage end,
+              advisor = coalesce($4, advisor),
+              updated_by = $5,
+              updated_at = now()
+          where id = $1
+        `,
+        [item.studentId, item.processType, item.currentStageCode, item.advisor || null, operator.id]
+      )
+      imported += 1
+    }
+  })
+
+  return {
+    ...parsed,
+    imported
+  }
+}
+
 function parseQuizQuestions(filePath) {
   const rows = readRows(filePath)
   const validRows = []
@@ -286,6 +521,9 @@ async function importQuizQuestions(filePath, operator) {
 module.exports = {
   parseStudents,
   importStudents,
+  parseProcessProgress,
+  previewProcessProgress,
+  importProcessProgress,
   parseQuizQuestions,
   importQuizQuestions
 }

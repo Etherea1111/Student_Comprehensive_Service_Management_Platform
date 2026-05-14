@@ -69,6 +69,40 @@
   </view>
 
   <view class="section">
+    <view class="section-title"><text>批量导入</text></view>
+    <view class="import-list">
+      <view class="import-card card" wx:for="{{importTasks}}" wx:key="key">
+        <view class="import-main">
+          <view class="import-title-row">
+            <text class="import-title">{{item.title}}</text>
+            <text class="tag {{item.tagClass}}">{{item.tagText}}</text>
+          </view>
+          <view class="import-desc">{{item.desc}}</view>
+          <view class="import-template">模板：templates/import/{{item.templateName}}</view>
+          <view class="import-permission">{{item.permissionText}}</view>
+        </view>
+        <button
+          class="secondary-button import-button"
+          disabled="{{item.disabled}}"
+          data-kind="{{item.key}}"
+          bindtap="chooseImportFile"
+        >
+          上传导入
+        </button>
+      </view>
+    </view>
+    <view class="import-result card" wx:if="{{importResult}}">
+      <view class="result-title">{{importResult.title}}结果</view>
+      <view class="result-meta">{{importResult.fileName}} · 共 {{importResult.total}} 行 · 成功 {{importResult.imported}} 行 · 异常 {{importResult.errorCount}} 行</view>
+      <view class="error-list" wx:if="{{importResult.errors.length}}">
+        <view class="error-item" wx:for="{{importResult.errors}}" wx:key="line">
+          第 {{item.line}} 行 {{item.field}}：{{item.message}}
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
     <view class="section-title"><text>知识库录入</text></view>
     <view class="draft-form card">
       <view class="form-row">

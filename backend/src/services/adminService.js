@@ -63,7 +63,7 @@ async function getOperationLogs({ limit = 50 } = {}) {
 
 function getUploadPolicy() {
   return {
-    allowedTypes: ['doc', 'docx', 'xls', 'xlsx', 'pdf'],
+    allowedTypes: ['doc', 'docx', 'xls', 'xlsx', 'csv', 'pdf'],
     maxSizeMB: env.maxUploadMb,
     auditRequired: true,
     ownerRule: '谁上传，谁维护；敏感资料按角色权限控制。'

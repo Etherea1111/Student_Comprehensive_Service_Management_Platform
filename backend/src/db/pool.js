@@ -8,11 +8,17 @@ function getPool() {
     throw new Error('DATABASE_URL is not configured')
   }
   if (!pool) {
-    pool = new Pool({
+    const poolOptions = {
       connectionString: env.databaseUrl,
       max: 10,
       idleTimeoutMillis: 30000
-    })
+    }
+    if (process.env.DATABASE_SSL === 'true') {
+      poolOptions.ssl = {
+        rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false'
+      }
+    }
+    pool = new Pool(poolOptions)
   }
   return pool
 }

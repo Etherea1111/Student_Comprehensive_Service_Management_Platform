@@ -31,7 +31,7 @@ select
   'mock-openid-u2024001',
   id,
   '李同学',
-  'class_leader',
+  'super_admin',
   'pbkdf2$120000$e8bb5c88f9e4e0f9110c0e5d5c1d319e$4dca469d5eaa30e88e325668b5f04df9af890213dd83a9fa5c1d807850ea6123db481614457fc9ef7b837e15869a7c37394f2d065052c21341671d293cdf0c84',
   true,
   '[]'

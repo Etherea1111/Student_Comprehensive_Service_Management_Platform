@@ -9,6 +9,7 @@
 - JWT 登录态。
 - 角色权限校验。
 - 学生信息 Excel 导入预览与正式导入。
+- 党团个人进度 Excel 导入预览与正式导入。
 - 理论自测题库 Excel 导入预览与正式导入。
 - 知识库查询、草稿创建、复核发布。
 - 模板列表查询。
@@ -31,6 +32,7 @@ cp .env.example .env
 
 ```text
 DATABASE_URL=postgres://student_service:change_me@127.0.0.1:54321/student_service
+DATABASE_SSL=false
 JWT_SECRET=替换为长随机字符串
 DATA_CRYPTO_KEY=替换为另一个长随机字符串
 WECHAT_APP_ID=真实微信小程序 AppID
@@ -94,6 +96,28 @@ module.exports = {
 - `operation_logs`：后台操作日志。
 - `uploaded_files`：上传文件元数据。
 
+人大金仓接入方式：
+
+1. 在 Kingbase 中创建业务数据库和应用用户。
+2. 确认该实例开启 PostgreSQL 兼容访问能力。
+3. 将后端 `.env` 中的 `DATABASE_URL` 配为：
+
+```text
+DATABASE_URL=postgres://用户名:密码@数据库地址:端口/数据库名
+```
+
+如数据库网关要求 SSL，再设置：
+
+```text
+DATABASE_SSL=true
+DATABASE_SSL_REJECT_UNAUTHORIZED=true
+```
+
+4. 运行 `npm run db:init` 写入表结构和初始化数据。
+5. 小程序只配置后端 HTTPS 地址，不配置数据库地址。
+
+正式录入学生个人信息时，优先使用 `/api/imports/students` 批量导入。模板位于 `templates/import/students_template.csv`，后端会按 `student_no` 新增或更新学生，并生成对应学号密码账号。
+
 ## 5. 关键接口
 
 ### 登录与账号绑定
@@ -133,6 +157,8 @@ GET /api/processes/league/me
 PUT /api/processes/stages
 ```
 
+学生个人进度由负责老师、辅导员或超级管理员维护。一次活动导致多名学生进度变化时，使用导入接口批量更新 `process_progress`，不要让学生自行修改本人进度。
+
 ### 理论自测
 
 ```text
@@ -153,6 +179,8 @@ GET /api/admin/upload-policy
 ```text
 POST /api/imports/students/preview
 POST /api/imports/students
+POST /api/imports/process-progress/preview
+POST /api/imports/process-progress
 POST /api/imports/quiz/preview
 POST /api/imports/quiz
 ```
@@ -164,6 +192,7 @@ POST /api/imports/quiz
 导入模板位于：
 
 - `templates/import/students_template.csv`
+- `templates/import/process_progress_template.csv`
 - `templates/import/quiz_questions_template.csv`
 - `templates/import/knowledge_items_template.csv`
 - `templates/import/templates_metadata_template.csv`

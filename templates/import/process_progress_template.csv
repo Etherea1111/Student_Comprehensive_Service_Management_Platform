@@ -1,0 +1,2 @@
+student_no,name,process_type,current_stage_code,started_at,next_deadline,advisor,completed_actions,remark
+2024001001,李同学,party,development,2026-05-14,2026-07-14,王老师,"完成政治审查;参加发展对象培训",示例：专题培训后更新入党进度

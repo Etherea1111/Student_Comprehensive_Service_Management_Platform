@@ -15,6 +15,7 @@ const rolePermissions = {
     'manage_process',
     'import_students',
     'import_quiz',
+    'manage_permissions',
     'view_operation_records'
   ],
   college_leader: ['read_public', 'read_sensitive', 'view_statistics', 'view_operation_records'],
@@ -33,6 +34,7 @@ function resolvePermissions(role, extraPermissions = []) {
     permissions.add('manage_process')
     permissions.add('import_students')
     permissions.add('import_quiz')
+    permissions.add('manage_permissions')
     permissions.add('view_statistics')
     permissions.add('view_operation_records')
   }
