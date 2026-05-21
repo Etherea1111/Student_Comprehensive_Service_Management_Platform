@@ -1,5 +1,6 @@
 const db = require('../db/pool')
 const { notFound } = require('../utils/errors')
+const { decryptField, maskIdCard, maskPhone } = require('../utils/cryptoField')
 
 async function getMe(user) {
   const result = await db.query(
@@ -17,7 +18,10 @@ async function getMe(user) {
         s.political_status as "politicalStatus",
         s.party_stage as "partyStage",
         s.league_stage as "leagueStage",
-        s.student_status as "studentStatus"
+        s.student_status as "studentStatus",
+        s.is_alumni as "isAlumni",
+        s.ethnicity,
+        s.advisor
       from users u
       left join students s on s.id = u.student_id
       where u.id = $1
@@ -31,10 +35,102 @@ async function getMe(user) {
 
   return {
     ...result.rows[0],
-    permissions: user.permissions
+    permissions: user.permissions,
+    isAdminAccount: user.role !== 'student' || user.permissions.some((item) => item.startsWith('manage_'))
   }
 }
 
+async function listManagedStudents({ keyword = '' } = {}, user) {
+  const values = []
+  const conditions = ['s.deleted_at is null']
+  if (keyword) {
+    values.push(`%${keyword}%`)
+    const idx = values.length
+    conditions.push(`(s.student_no ilike $${idx} or s.name ilike $${idx} or s.class_name ilike $${idx} or s.major ilike $${idx})`)
+  }
+
+  const result = await db.query(
+    `
+      select
+        s.id,
+        s.student_no as "studentNo",
+        s.name,
+        s.college,
+        s.major,
+        s.class_name as "className",
+        s.grade,
+        s.education_level as "educationLevel",
+        s.political_status as "politicalStatus",
+        s.party_stage as "partyStage",
+        s.league_stage as "leagueStage",
+        s.phone_encrypted as "phoneEncrypted",
+        s.id_card_encrypted as "idCardEncrypted",
+        s.birthplace_encrypted as "birthplaceEncrypted",
+        s.household_register_encrypted as "householdRegisterEncrypted",
+        s.ethnicity,
+        s.advisor,
+        s.student_status as "studentStatus",
+        s.is_alumni as "isAlumni",
+        s.awards,
+        s.remark,
+        u.role,
+        u.extra_permissions as "extraPermissions",
+        to_char(s.updated_at, 'YYYY-MM-DD HH24:MI') as "updatedAt"
+      from students s
+      left join users u on u.student_id = s.id and u.disabled_at is null
+      where ${conditions.join(' and ')}
+      order by s.grade desc, s.class_name asc, s.student_no asc
+      limit 100
+    `,
+    values
+  )
+
+  const canReadSensitive = user.permissions.includes('read_sensitive') || user.permissions.includes('manage_all')
+  return result.rows.map((row) => mapStudentRow(row, canReadSensitive))
+}
+
+function mapStudentRow(row, canReadSensitive) {
+  const phone = decryptField(row.phoneEncrypted)
+  const idCard = decryptField(row.idCardEncrypted)
+  const birthplace = decryptField(row.birthplaceEncrypted)
+  const householdRegister = decryptField(row.householdRegisterEncrypted)
+  return {
+    id: row.id,
+    studentNo: row.studentNo,
+    name: row.name,
+    college: row.college,
+    major: row.major,
+    className: row.className,
+    grade: row.grade,
+    educationLevel: row.educationLevel,
+    politicalStatus: row.politicalStatus,
+    partyStage: row.partyStage,
+    leagueStage: row.leagueStage,
+    ethnicity: row.ethnicity,
+    advisor: canReadSensitive ? row.advisor : row.advisor ? '已隐藏' : '',
+    studentStatus: canReadSensitive ? row.studentStatus : maskStatus(row.studentStatus),
+    isAlumni: row.isAlumni,
+    awards: row.awards,
+    remark: canReadSensitive ? row.remark : row.remark ? '已隐藏' : '',
+    role: row.role || 'student',
+    extraPermissions: row.extraPermissions || [],
+    phone: canReadSensitive ? phone : maskPhone(phone),
+    idCard: canReadSensitive ? idCard : maskIdCard(idCard),
+    birthplace: canReadSensitive ? birthplace : birthplace ? '已隐藏' : '',
+    householdRegister: canReadSensitive ? householdRegister : householdRegister ? '已隐藏' : '',
+    sensitiveVisible: canReadSensitive,
+    updatedAt: row.updatedAt
+  }
+}
+
+function maskStatus(status) {
+  if (!status || status === '在读') {
+    return status || ''
+  }
+  return '特殊状态已隐藏'
+}
+
 module.exports = {
-  getMe
+  getMe,
+  listManagedStudents
 }

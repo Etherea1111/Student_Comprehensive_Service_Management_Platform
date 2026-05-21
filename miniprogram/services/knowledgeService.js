@@ -2,12 +2,42 @@ const { knowledgeItems, templates } = require('../data/mockData')
 const api = require('./request')
 
 const DRAFT_STORAGE_KEY = 'knowledge_drafts'
+const TEMPLATE_STORAGE_KEY = 'managed_templates'
+const ARCHIVED_TEMPLATE_STORAGE_KEY = 'archived_template_ids'
 
 function readDrafts() {
   if (typeof wx === 'undefined' || !wx.getStorageSync) {
     return []
   }
   return wx.getStorageSync(DRAFT_STORAGE_KEY) || []
+}
+
+function readStoredTemplates() {
+  if (typeof wx === 'undefined' || !wx.getStorageSync) {
+    return []
+  }
+  return wx.getStorageSync(TEMPLATE_STORAGE_KEY) || []
+}
+
+function writeStoredTemplates(items) {
+  if (typeof wx === 'undefined' || !wx.setStorageSync) {
+    return
+  }
+  wx.setStorageSync(TEMPLATE_STORAGE_KEY, items)
+}
+
+function readArchivedTemplateIds() {
+  if (typeof wx === 'undefined' || !wx.getStorageSync) {
+    return []
+  }
+  return wx.getStorageSync(ARCHIVED_TEMPLATE_STORAGE_KEY) || []
+}
+
+function writeArchivedTemplateIds(ids) {
+  if (typeof wx === 'undefined' || !wx.setStorageSync) {
+    return
+  }
+  wx.setStorageSync(ARCHIVED_TEMPLATE_STORAGE_KEY, ids)
 }
 
 function writeDrafts(drafts) {
@@ -93,6 +123,93 @@ function fetchTemplates(category) {
     .catch(() => getTemplates(category))
 }
 
+function fetchManagedTemplates(filters = {}) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve(getLocalManagedTemplates(filters))
+  }
+  return api
+    .request({
+      url: '/templates/manage',
+      data: filters
+    })
+    .then((result) => result.items || [])
+    .catch(() => getLocalManagedTemplates(filters))
+}
+
+function getLocalManagedTemplates(filters = {}) {
+  const keyword = normalizeKeyword(filters.keyword)
+  const archivedIds = readArchivedTemplateIds().map((id) => String(id))
+  const baseItems = templates
+    .map((item) => ({
+      ...item,
+      fileType: String(item.type || '').toLowerCase(),
+      status: 'published',
+      statusText: '已发布',
+      owner: item.owner || '学院团委'
+    }))
+    .filter((item) => archivedIds.indexOf(String(item.id)) < 0)
+  const storedItems = readStoredTemplates()
+  return storedItems
+    .concat(baseItems)
+    .filter((item) => {
+      const statusMatched = !filters.status || filters.status === '全部' || item.status === filters.status
+      const categoryMatched = !filters.category || filters.category === '全部' || item.category === filters.category
+      if (!keyword) {
+        return statusMatched && categoryMatched
+      }
+      const haystack = [item.name, item.category, item.description, item.owner].join(' ').toLowerCase()
+      return statusMatched && categoryMatched && haystack.indexOf(keyword) >= 0
+    })
+}
+
+function saveTemplate(payload) {
+  if (!api.isApiEnabled()) {
+    const storedTemplates = readStoredTemplates()
+    const saved = {
+      id: payload.id || `tpl-local-${Date.now()}`,
+      ...payload,
+      type: String(payload.fileType || '').toUpperCase(),
+      status: 'published',
+      statusText: '已发布',
+      updatedAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
+    }
+    const nextTemplates = storedTemplates.filter((item) => String(item.id) !== String(saved.id))
+    nextTemplates.unshift(saved)
+    writeStoredTemplates(nextTemplates)
+    return Promise.resolve(saved)
+  }
+  return api.request({
+    url: '/templates',
+    method: 'PUT',
+    data: payload
+  })
+}
+
+function archiveTemplate(id) {
+  if (!api.isApiEnabled()) {
+    const storedTemplates = readStoredTemplates().map((item) =>
+      String(item.id) === String(id)
+        ? {
+            ...item,
+            status: 'archived',
+            statusText: '已归档'
+          }
+        : item
+    )
+    writeStoredTemplates(storedTemplates)
+    const archivedIds = readArchivedTemplateIds()
+    if (archivedIds.map((item) => String(item)).indexOf(String(id)) < 0) {
+      archivedIds.push(id)
+      writeArchivedTemplateIds(archivedIds)
+    }
+    return Promise.resolve({ id, status: 'archived' })
+  }
+  return api.request({
+    url: `/templates/${id}/archive`,
+    method: 'POST'
+  })
+}
+
 function getTemplateCategories() {
   const categories = templates.map((item) => item.category)
   return ['全部'].concat(Array.from(new Set(categories)))
@@ -120,13 +237,14 @@ function addKnowledgeDraft(payload) {
       })
       .catch(() => createLocalDraft(payload))
   }
-  return createLocalDraft(payload)
+  return Promise.resolve(createLocalDraft(payload))
 }
 
 function createLocalDraft(payload) {
   const draft = {
     id: `draft-${Date.now()}`,
-    status: 'pending_review',
+    status: 'draft',
+    statusText: '待复核',
     maxFileSizeMB: 30,
     createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
     ...payload
@@ -141,6 +259,102 @@ function getKnowledgeDrafts() {
   return readDrafts()
 }
 
+function fetchManagedKnowledge(filters = {}) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve(getLocalManagedKnowledge(filters))
+  }
+  return api
+    .request({
+      url: '/knowledge/manage',
+      data: filters
+    })
+    .then((result) => result.items || [])
+    .catch(() => getLocalManagedKnowledge(filters))
+}
+
+function getLocalManagedKnowledge(filters = {}) {
+  const localDrafts = readDrafts().map((item) => ({
+    ...item,
+    tags: item.tags || [],
+    keywords: item.keywords || [],
+    status: item.status || 'draft',
+    statusText: '待复核',
+    createdAt: item.createdAt || '',
+    updatedAt: item.createdAt || ''
+  }))
+  const publishedItems = knowledgeItems.map((item) => ({
+    ...item,
+    keywords: item.keywords || [],
+    status: 'published',
+    statusText: '已发布',
+    createdAt: item.updatedAt,
+    updatedAt: item.updatedAt
+  }))
+  const keyword = normalizeKeyword(filters.keyword)
+  return localDrafts.concat(publishedItems).filter((item) => {
+    const statusMatched = !filters.status || filters.status === '全部' || item.status === filters.status
+    const categoryMatched = !filters.category || filters.category === '全部' || item.category === filters.category
+    if (!keyword) {
+      return statusMatched && categoryMatched
+    }
+    const haystack = [
+      item.title,
+      item.category,
+      item.answer,
+      ...(item.tags || []),
+      ...(item.keywords || [])
+    ]
+      .join(' ')
+      .toLowerCase()
+    return statusMatched && categoryMatched && haystack.indexOf(keyword) >= 0
+  })
+}
+
+function publishKnowledgeDraft(id) {
+  if (!api.isApiEnabled()) {
+    updateLocalDraftStatus(id, 'published', '已发布')
+    return Promise.resolve({ id, status: 'published' })
+  }
+  return api.request({
+    url: `/knowledge/drafts/${id}/publish`,
+    method: 'POST'
+  })
+}
+
+function rejectKnowledgeDraft(id) {
+  if (!api.isApiEnabled()) {
+    updateLocalDraftStatus(id, 'rejected', '已退回')
+    return Promise.resolve({ id, status: 'rejected' })
+  }
+  return api.request({
+    url: `/knowledge/drafts/${id}/reject`,
+    method: 'POST'
+  })
+}
+
+function archiveKnowledgeItem(id) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve({ id, status: 'archived' })
+  }
+  return api.request({
+    url: `/knowledge/${id}/archive`,
+    method: 'POST'
+  })
+}
+
+function updateLocalDraftStatus(id, status, statusText) {
+  const drafts = readDrafts().map((item) =>
+    item.id === id
+      ? {
+          ...item,
+          status,
+          statusText
+        }
+      : item
+  )
+  writeDrafts(drafts)
+}
+
 module.exports = {
   searchKnowledge,
   fetchKnowledge,
@@ -148,8 +362,15 @@ module.exports = {
   fetchCategories,
   getTemplates,
   fetchTemplates,
+  fetchManagedTemplates,
+  saveTemplate,
+  archiveTemplate,
   getTemplateCategories,
   fetchTemplateCategories,
   addKnowledgeDraft,
-  getKnowledgeDrafts
+  getKnowledgeDrafts,
+  fetchManagedKnowledge,
+  publishKnowledgeDraft,
+  rejectKnowledgeDraft,
+  archiveKnowledgeItem
 }

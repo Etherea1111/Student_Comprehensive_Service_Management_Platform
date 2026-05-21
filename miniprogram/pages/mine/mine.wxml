@@ -30,6 +30,17 @@
         <text>管理员账号</text>
         <text>{{adminAccountText}}</text>
       </view>
+      <view class="info-row">
+        <text>敏感数据</text>
+        <text>{{sensitiveVisibleText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title"><text>当前权限</text></view>
+    <view class="permission-card card">
+      <text class="tag {{item.tagClass}}" wx:for="{{permissionItems}}" wx:key="key">{{item.label}}</text>
     </view>
   </view>
 

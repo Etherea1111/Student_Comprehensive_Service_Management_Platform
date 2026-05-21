@@ -47,21 +47,21 @@
       <view class="manage-item card">
         <view>
           <view class="manage-title">知识库条目</view>
-          <view class="manage-desc">后续接入后台后支持新增、编辑、上传文件和老师复核。</view>
+          <view class="manage-desc">支持草稿录入、老师复核、发布、退回和归档。</view>
         </view>
         <text class="tag">模块一</text>
       </view>
       <view class="manage-item card">
         <view>
           <view class="manage-title">模板文件</view>
-          <view class="manage-desc">后续接入对象存储或文件服务，当前保留链接字段。</view>
+          <view class="manage-desc">支持通过导入维护文件元数据；真实环境需替换为签名下载链接。</view>
         </view>
         <text class="tag">模块一</text>
       </view>
       <view class="manage-item card">
         <view>
           <view class="manage-title">党团流程配置</view>
-          <view class="manage-desc">支持节点名称、说明、动作清单和提醒周期的配置化扩展。</view>
+          <view class="manage-desc">支持节点名称、动作清单、提醒周期和学生进度维护。</view>
         </view>
         <text class="tag">模块二</text>
       </view>
@@ -118,12 +118,20 @@
         <input class="form-input" value="{{draftForm.tagsText}}" data-field="tagsText" placeholder="用逗号分隔，如：奖学金,评奖评优" bindinput="onDraftInput" />
       </view>
       <view class="form-row">
+        <text class="form-label">检索词</text>
+        <input class="form-input" value="{{draftForm.keywordsText}}" data-field="keywordsText" placeholder="用逗号分隔，补充学生常用问法" bindinput="onDraftInput" />
+      </view>
+      <view class="form-row">
         <text class="form-label">标准答复</text>
         <textarea class="form-textarea" value="{{draftForm.answer}}" data-field="answer" placeholder="录入经老师确认的标准答复，避免自由生成不确定内容" bindinput="onDraftInput"></textarea>
       </view>
       <view class="form-row">
         <text class="form-label">官方链接</text>
         <input class="form-input" value="{{draftForm.officialLink}}" data-field="officialLink" placeholder="https://..." bindinput="onDraftInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">敏感提示</text>
+        <input class="form-input" value="{{draftForm.sensitiveHint}}" data-field="sensitiveHint" placeholder="如：涉及隐私请联系辅导员处理" bindinput="onDraftInput" />
       </view>
       <view class="file-row">
         <view>
@@ -149,6 +157,227 @@
       </view>
     </view>
     <view class="empty" wx:else>暂无本机录入草稿。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">
+      <text>知识库复核与发布</text>
+      <button class="text-button" bindtap="refreshManagedKnowledge">刷新</button>
+    </view>
+    <view class="review-list" wx:if="{{managedKnowledge.length}}">
+      <view class="review-card card" wx:for="{{managedKnowledge}}" wx:key="id">
+        <view class="review-top">
+          <view>
+            <view class="review-title">{{item.title}}</view>
+            <view class="review-meta">{{item.category}} · {{item.owner}} · {{item.updatedAt}}</view>
+          </view>
+          <text class="tag {{item.statusClass}}">{{item.statusText}}</text>
+        </view>
+        <view class="review-answer">{{item.answer}}</view>
+        <view class="review-tags" wx:if="{{item.tagsText}}">
+          <text class="tag neutral">{{item.tagsText}}</text>
+        </view>
+        <view class="review-actions">
+          <button class="secondary-button compact-button" wx:if="{{item.canPublish}}" data-id="{{item.id}}" bindtap="publishKnowledge">发布</button>
+          <button class="secondary-button compact-button" wx:if="{{item.canReject}}" data-id="{{item.id}}" bindtap="rejectKnowledge">退回</button>
+          <button class="secondary-button compact-button" wx:if="{{item.canArchive}}" data-id="{{item.id}}" bindtap="archiveKnowledge">归档</button>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:else>暂无可维护知识库条目。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">
+      <text>模板文件维护</text>
+      <button class="text-button" bindtap="refreshManagedTemplates">刷新</button>
+    </view>
+    <view class="template-form card">
+      <view class="form-row">
+        <text class="form-label">模板名称</text>
+        <input class="form-input" value="{{templateForm.name}}" data-field="name" placeholder="如：活动简报模板" bindinput="onTemplateInput" />
+      </view>
+      <view class="form-split">
+        <view class="form-row">
+          <text class="form-label">分类</text>
+          <input class="form-input" value="{{templateForm.category}}" data-field="category" placeholder="如：学生组织" bindinput="onTemplateInput" />
+        </view>
+        <view class="form-row">
+          <text class="form-label">文件类型</text>
+          <input class="form-input" value="{{templateForm.fileType}}" data-field="fileType" placeholder="docx/xlsx/pdf" bindinput="onTemplateInput" />
+        </view>
+      </view>
+      <view class="form-row">
+        <text class="form-label">下载链接</text>
+        <input class="form-input" value="{{templateForm.url}}" data-field="url" placeholder="https://..." bindinput="onTemplateInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">大小标识</text>
+        <input class="form-input" value="{{templateForm.size}}" data-field="size" placeholder="如：42KB" bindinput="onTemplateInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">说明</text>
+        <textarea class="form-textarea small" value="{{templateForm.description}}" data-field="description" placeholder="说明模板适用场景" bindinput="onTemplateInput"></textarea>
+      </view>
+      <button class="primary-button submit-draft-button" bindtap="submitTemplate">保存模板</button>
+    </view>
+    <view class="template-manage-list" wx:if="{{managedTemplates.length}}">
+      <view class="template-manage-card card" wx:for="{{managedTemplates}}" wx:key="id">
+        <view class="review-top">
+          <view>
+            <view class="review-title">{{item.name}}</view>
+            <view class="review-meta">{{item.category}} · {{item.type || item.fileType}} · {{item.owner || '未设置维护人'}}</view>
+          </view>
+          <text class="tag {{item.statusClass}}">{{item.statusText}}</text>
+        </view>
+        <view class="review-answer">{{item.description}}</view>
+        <view class="review-actions">
+          <button class="secondary-button compact-button" data-id="{{item.id}}" bindtap="editTemplate">编辑</button>
+          <button class="secondary-button compact-button" wx:if="{{item.canArchive}}" data-id="{{item.id}}" bindtap="archiveTemplate">归档</button>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:else>暂无模板文件。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title"><text>流程节点维护</text></view>
+    <view wx:if="{{canManageProcess}}">
+      <view class="admin-tabs card">
+        <button class="secondary-button compact-button" data-type="party" bindtap="switchManageProcessType">入党</button>
+        <button class="secondary-button compact-button" data-type="league" bindtap="switchManageProcessType">入团</button>
+        <text class="tag neutral">当前：{{activeManageProcessType}}</text>
+      </view>
+      <view class="stage-form card">
+        <view class="form-row">
+          <text class="form-label">节点编码</text>
+          <input class="form-input" value="{{stageForm.stageCode}}" data-field="stageCode" placeholder="如：activist" bindinput="onStageInput" />
+        </view>
+        <view class="form-row">
+          <text class="form-label">节点名称</text>
+          <input class="form-input" value="{{stageForm.name}}" data-field="name" placeholder="如：入党积极分子" bindinput="onStageInput" />
+        </view>
+        <view class="form-row">
+          <text class="form-label">短名称</text>
+          <input class="form-input" value="{{stageForm.shortName}}" data-field="shortName" placeholder="用于流程条展示" bindinput="onStageInput" />
+        </view>
+        <view class="form-row">
+          <text class="form-label">节点说明</text>
+          <textarea class="form-textarea small" value="{{stageForm.description}}" data-field="description" placeholder="说明该阶段要求" bindinput="onStageInput"></textarea>
+        </view>
+        <view class="form-row">
+          <text class="form-label">动作清单</text>
+          <input class="form-input" value="{{stageForm.actionsText}}" data-field="actionsText" placeholder="用逗号分隔，如：提交思想汇报,参加培训" bindinput="onStageInput" />
+        </view>
+        <view class="form-split">
+          <view class="form-row">
+            <text class="form-label">提醒天数</text>
+            <input class="form-input" value="{{stageForm.reminderDays}}" data-field="reminderDays" type="number" bindinput="onStageInput" />
+          </view>
+          <view class="form-row">
+            <text class="form-label">排序</text>
+            <input class="form-input" value="{{stageForm.sortOrder}}" data-field="sortOrder" type="number" bindinput="onStageInput" />
+          </view>
+        </view>
+        <button class="primary-button submit-draft-button" bindtap="submitStage">保存流程节点</button>
+      </view>
+      <view class="stage-list">
+        <view class="stage-card card" wx:for="{{managedStages}}" wx:key="stageCode">
+          <view class="stage-head">
+            <view>
+              <view class="stage-title">{{item.sortOrder}}. {{item.name}}</view>
+              <view class="stage-code">{{item.stageCode}} · {{item.reminderDays}} 天提醒</view>
+            </view>
+            <button class="secondary-button compact-button" data-code="{{item.stageCode}}" bindtap="editStage">编辑</button>
+          </view>
+          <view class="stage-desc">{{item.description}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:else>当前角色无权维护流程配置。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title"><text>学生进度维护</text></view>
+    <view wx:if="{{canManageProcess}}">
+      <view class="search-row card">
+        <input class="form-input" value="{{progressKeyword}}" placeholder="按学号、姓名、班级搜索" bindinput="onProgressKeywordInput" />
+        <button class="secondary-button search-mini-button" bindtap="refreshManagedProgress">搜索</button>
+      </view>
+      <view class="progress-form card">
+        <view class="form-row">
+          <text class="form-label">学号</text>
+          <input class="form-input" value="{{progressForm.studentNo}}" data-field="studentNo" maxlength="10" type="number" bindinput="onProgressInput" />
+        </view>
+        <view class="form-row">
+          <text class="form-label">当前节点编码</text>
+          <input class="form-input" value="{{progressForm.currentStageCode}}" data-field="currentStageCode" placeholder="如：activist/member" bindinput="onProgressInput" />
+        </view>
+        <view class="form-split">
+          <view class="form-row">
+            <text class="form-label">进入时间</text>
+            <input class="form-input" value="{{progressForm.startedAt}}" data-field="startedAt" placeholder="YYYY-MM-DD" bindinput="onProgressInput" />
+          </view>
+          <view class="form-row">
+            <text class="form-label">下一节点</text>
+            <input class="form-input" value="{{progressForm.nextDeadline}}" data-field="nextDeadline" placeholder="YYYY-MM-DD" bindinput="onProgressInput" />
+          </view>
+        </view>
+        <view class="form-row">
+          <text class="form-label">负责人</text>
+          <input class="form-input" value="{{progressForm.advisor}}" data-field="advisor" bindinput="onProgressInput" />
+        </view>
+        <view class="form-row">
+          <text class="form-label">已完成动作</text>
+          <input class="form-input" value="{{progressForm.completedActionsText}}" data-field="completedActionsText" placeholder="用逗号分隔" bindinput="onProgressInput" />
+        </view>
+        <button class="primary-button submit-draft-button" bindtap="submitProgress">保存学生进度</button>
+      </view>
+      <view class="progress-list">
+        <view class="progress-card card" wx:for="{{managedProgress}}" wx:key="studentNo">
+          <view class="progress-head">
+            <view>
+              <view class="progress-name">{{item.name}} · {{item.studentNo}}</view>
+              <view class="progress-meta">{{item.className}} · {{item.currentStageName || item.currentStageCode}}</view>
+            </view>
+            <button class="secondary-button compact-button" data-student-no="{{item.studentNo}}" bindtap="editProgress">编辑</button>
+          </view>
+          <view class="progress-detail">下一节点：{{item.nextDeadline || '未设置'}} · 负责人：{{item.advisor || '未设置'}}</view>
+          <view class="progress-detail">已完成：{{item.completedActionsText || '暂无记录'}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:else>当前角色无权维护学生进度。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title"><text>学生档案与隐私</text></view>
+    <view class="search-row card">
+      <input class="form-input" value="{{studentKeyword}}" placeholder="按学号、姓名、班级、专业搜索" bindinput="onStudentKeywordInput" />
+      <button class="secondary-button search-mini-button" bindtap="refreshManagedStudents">搜索</button>
+    </view>
+    <view class="student-list" wx:if="{{managedStudents.length}}">
+      <view class="student-card card" wx:for="{{managedStudents}}" wx:key="studentNo">
+        <view class="student-head">
+          <view>
+            <view class="student-name">{{item.name}} · {{item.studentNo}}</view>
+            <view class="student-meta">{{item.grade}} · {{item.major}} · {{item.className}}</view>
+          </view>
+          <text class="tag {{item.sensitiveTagClass}}">{{item.sensitiveTagText}}</text>
+        </view>
+        <view class="student-grid">
+          <view>手机号：{{item.phone || '未登记'}}</view>
+          <view>身份证：{{item.idCard || '未登记'}}</view>
+          <view>生源地：{{item.birthplace || '未登记'}}</view>
+          <view>户籍：{{item.householdRegister || '未登记'}}</view>
+          <view>导师/负责人：{{item.advisor || '未登记'}}</view>
+          <view>学籍状态：{{item.studentStatus || '未登记'}}</view>
+          <view>校友状态：{{item.alumniText}}</view>
+          <view>获奖情况：{{item.awards || '未登记'}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:else>暂无匹配学生档案。</view>
   </view>
 
   <view class="section">

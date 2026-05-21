@@ -66,6 +66,13 @@
   color: #667085;
 }
 
+.permission-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  padding: 22rpx;
+}
+
 .action-list {
   display: block;
 }

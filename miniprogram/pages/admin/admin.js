@@ -1,14 +1,48 @@
 const adminService = require('../../services/adminService')
 const profileService = require('../../services/profileService')
 const knowledgeService = require('../../services/knowledgeService')
+const processService = require('../../services/processService')
 const authGuard = require('../../utils/authGuard')
 
 const emptyDraftForm = {
   title: '',
   category: '',
   tagsText: '',
+  keywordsText: '',
   answer: '',
-  officialLink: ''
+  officialLink: '',
+  sensitiveHint: ''
+}
+
+const emptyStageForm = {
+  processType: 'party',
+  stageCode: '',
+  name: '',
+  shortName: '',
+  description: '',
+  actionsText: '',
+  reminderDays: '',
+  sortOrder: ''
+}
+
+const emptyProgressForm = {
+  studentNo: '',
+  processType: 'party',
+  currentStageCode: '',
+  startedAt: '',
+  nextDeadline: '',
+  advisor: '',
+  completedActionsText: ''
+}
+
+const emptyTemplateForm = {
+  id: '',
+  name: '',
+  category: '',
+  fileType: 'docx',
+  size: '',
+  url: '',
+  description: ''
 }
 
 const importTasks = [
@@ -57,7 +91,25 @@ Page({
     selectedFile: null,
     selectedFileName: '未选择文件',
     importResult: null,
-    drafts: []
+    drafts: [],
+    managedKnowledge: [],
+    stageForm: emptyStageForm,
+    processTypeOptions: [
+      { label: '入党', value: 'party' },
+      { label: '入团', value: 'league' }
+    ],
+    activeManageProcessType: 'party',
+    managedStages: [],
+    progressKeyword: '',
+    managedProgress: [],
+    progressForm: emptyProgressForm,
+    studentKeyword: '',
+    managedStudents: [],
+    canAuditContent: false,
+    canManageProcess: false,
+    canReadSensitive: false,
+    templateForm: emptyTemplateForm,
+    managedTemplates: []
   },
 
   onLoad() {
@@ -82,9 +134,22 @@ Page({
         logs,
         futureModules: adminService.getFutureModules(),
         importTasks: this.buildImportTasks(dashboard.user.permissions || []),
-        drafts: knowledgeService.getKnowledgeDrafts()
+        drafts: knowledgeService.getKnowledgeDrafts(),
+        canAuditContent: this.hasDashboardPermission(dashboard.user, 'audit_content'),
+        canManageProcess: this.hasDashboardPermission(dashboard.user, 'manage_process'),
+        canReadSensitive: this.hasDashboardPermission(dashboard.user, 'read_sensitive')
       })
+      this.refreshManagedKnowledge()
+      this.refreshManagedTemplates()
+      this.refreshManagedStages()
+      this.refreshManagedProgress()
+      this.refreshManagedStudents()
     })
+  },
+
+  hasDashboardPermission(user, permission) {
+    const permissions = (user && user.permissions) || []
+    return permissions.indexOf(permission) >= 0 || permissions.indexOf('manage_all') >= 0
   },
 
   buildImportTasks(permissions) {
@@ -107,6 +172,48 @@ Page({
         ...this.data.draftForm,
         [field]: event.detail.value
       }
+    })
+  },
+
+  onStageInput(event) {
+    const field = event.currentTarget.dataset.field
+    this.setData({
+      stageForm: {
+        ...this.data.stageForm,
+        [field]: event.detail.value
+      }
+    })
+  },
+
+  onProgressInput(event) {
+    const field = event.currentTarget.dataset.field
+    this.setData({
+      progressForm: {
+        ...this.data.progressForm,
+        [field]: event.detail.value
+      }
+    })
+  },
+
+  onTemplateInput(event) {
+    const field = event.currentTarget.dataset.field
+    this.setData({
+      templateForm: {
+        ...this.data.templateForm,
+        [field]: event.detail.value
+      }
+    })
+  },
+
+  onProgressKeywordInput(event) {
+    this.setData({
+      progressKeyword: event.detail.value
+    })
+  },
+
+  onStudentKeywordInput(event) {
+    this.setData({
+      studentKeyword: event.detail.value
     })
   },
 
@@ -245,28 +352,321 @@ Page({
       return
     }
 
-    knowledgeService.addKnowledgeDraft({
-      title: form.title,
-      category: form.category,
-      tags: form.tagsText
-        .split(/[,，]/)
-        .map((item) => item.trim())
-        .filter(Boolean),
-      answer: form.answer,
-      officialLink: form.officialLink,
-      owner: this.data.dashboard.user.name,
-      fileName: this.data.selectedFileName
-    })
+    knowledgeService
+      .addKnowledgeDraft({
+        title: form.title,
+        category: form.category,
+        tags: form.tagsText
+          .split(/[,，]/)
+          .map((item) => item.trim())
+          .filter(Boolean),
+        keywords: form.keywordsText
+          .split(/[,，]/)
+          .map((item) => item.trim())
+          .filter(Boolean),
+        answer: form.answer,
+        officialLink: form.officialLink,
+        sensitiveHint: form.sensitiveHint,
+        owner: this.data.dashboard.user.name,
+        fileName: this.data.selectedFileName
+      })
+      .then(() => {
+        this.setData({
+          draftForm: { ...emptyDraftForm },
+          selectedFile: null,
+          selectedFileName: '未选择文件',
+          drafts: knowledgeService.getKnowledgeDrafts()
+        })
+        this.refreshManagedKnowledge()
+        wx.showToast({
+          title: '已生成草稿',
+          icon: 'success'
+        })
+      })
+      .catch((error) => {
+        wx.showToast({
+          title: error.message || '草稿提交失败',
+          icon: 'none'
+        })
+      })
+  },
 
+  refreshManagedKnowledge() {
+    knowledgeService.fetchManagedKnowledge({ status: '全部' }).then((items) => {
+      this.setData({
+        managedKnowledge: items.map((item) => ({
+          ...item,
+          tagsText: (item.tags || []).join('、'),
+          statusClass: item.status === 'published' ? 'success' : item.status === 'rejected' ? 'warn' : 'neutral',
+          canPublish: item.status === 'draft' && this.data.canAuditContent,
+          canReject: item.status === 'draft' && this.data.canAuditContent,
+          canArchive: item.status === 'published' && this.data.dashboard.canManage
+        }))
+      })
+    })
+  },
+
+  publishKnowledge(event) {
+    const id = event.currentTarget.dataset.id
+    knowledgeService.publishKnowledgeDraft(id).then(() => {
+      wx.showToast({ title: '已发布', icon: 'success' })
+      this.refreshManagedKnowledge()
+    })
+  },
+
+  rejectKnowledge(event) {
+    const id = event.currentTarget.dataset.id
+    knowledgeService.rejectKnowledgeDraft(id).then(() => {
+      wx.showToast({ title: '已退回', icon: 'success' })
+      this.refreshManagedKnowledge()
+    })
+  },
+
+  archiveKnowledge(event) {
+    const id = event.currentTarget.dataset.id
+    wx.showModal({
+      title: '确认归档',
+      content: '归档后学生端不再展示该条标准答复。',
+      success: (res) => {
+        if (!res.confirm) {
+          return
+        }
+        knowledgeService.archiveKnowledgeItem(id).then(() => {
+          wx.showToast({ title: '已归档', icon: 'success' })
+          this.refreshManagedKnowledge()
+        })
+      }
+    })
+  },
+
+  refreshManagedTemplates() {
+    knowledgeService.fetchManagedTemplates({ status: '全部' }).then((items) => {
+      this.setData({
+        managedTemplates: items.map((item) => ({
+          ...item,
+          statusClass: item.status === 'published' ? 'success' : 'neutral',
+          canArchive: item.status === 'published' && this.data.dashboard.canManage
+        }))
+      })
+    })
+  },
+
+  editTemplate(event) {
+    const id = event.currentTarget.dataset.id
+    const item = this.data.managedTemplates.find((template) => String(template.id) === String(id))
+    if (!item) {
+      return
+    }
     this.setData({
-      draftForm: { ...emptyDraftForm },
-      selectedFile: null,
-      selectedFileName: '未选择文件',
-      drafts: knowledgeService.getKnowledgeDrafts()
+      templateForm: {
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        fileType: item.fileType || String(item.type || '').toLowerCase(),
+        size: item.size || '',
+        url: item.url || '',
+        description: item.description || ''
+      }
     })
-    wx.showToast({
-      title: '已生成草稿',
-      icon: 'success'
+  },
+
+  submitTemplate() {
+    const form = this.data.templateForm
+    if (!form.name || !form.category || !form.fileType || !form.url) {
+      wx.showToast({ title: '请填写模板名称、分类、类型和链接', icon: 'none' })
+      return
+    }
+    knowledgeService
+      .saveTemplate({
+        id: form.id || undefined,
+        name: form.name,
+        category: form.category,
+        fileType: form.fileType,
+        size: form.size,
+        url: form.url,
+        description: form.description,
+        owner: this.data.dashboard.user.name
+      })
+      .then(() => {
+        wx.showToast({ title: '模板已保存', icon: 'success' })
+        this.setData({
+          templateForm: { ...emptyTemplateForm }
+        })
+        this.refreshManagedTemplates()
+      })
+  },
+
+  archiveTemplate(event) {
+    const id = event.currentTarget.dataset.id
+    knowledgeService.archiveTemplate(id).then(() => {
+      wx.showToast({ title: '模板已归档', icon: 'success' })
+      this.refreshManagedTemplates()
     })
+  },
+
+  switchManageProcessType(event) {
+    const type = event.currentTarget.dataset.type
+    this.setData({
+      activeManageProcessType: type,
+      stageForm: {
+        ...this.data.stageForm,
+        processType: type
+      },
+      progressForm: {
+        ...this.data.progressForm,
+        processType: type
+      }
+    })
+    this.refreshManagedStages()
+    this.refreshManagedProgress()
+  },
+
+  editStage(event) {
+    const code = event.currentTarget.dataset.code
+    const stage = this.data.managedStages.find((item) => item.stageCode === code)
+    if (!stage) {
+      return
+    }
+    this.setData({
+      stageForm: {
+        processType: stage.processType,
+        stageCode: stage.stageCode,
+        name: stage.name,
+        shortName: stage.shortName || '',
+        description: stage.description || '',
+        actionsText: (stage.actions || []).join('，'),
+        reminderDays: stage.reminderDays || '',
+        sortOrder: stage.sortOrder || ''
+      }
+    })
+  },
+
+  submitStage() {
+    const form = this.data.stageForm
+    if (!form.stageCode || !form.name) {
+      wx.showToast({ title: '请填写节点编码和名称', icon: 'none' })
+      return
+    }
+    processService
+      .saveProcessStage({
+        processType: form.processType,
+        stageCode: form.stageCode,
+        name: form.name,
+        shortName: form.shortName,
+        description: form.description,
+        actions: form.actionsText
+          .split(/[,，、]/)
+          .map((item) => item.trim())
+          .filter(Boolean),
+        reminderDays: Number(form.reminderDays) || 0,
+        sortOrder: Number(form.sortOrder) || 0
+      })
+      .then(() => {
+        wx.showToast({ title: '流程节点已保存', icon: 'success' })
+        this.setData({
+          stageForm: {
+            ...emptyStageForm,
+            processType: this.data.activeManageProcessType
+          }
+        })
+        this.refreshManagedStages()
+      })
+  },
+
+  refreshManagedStages() {
+    if (!this.data.canManageProcess) {
+      return
+    }
+    processService.fetchManagedStages(this.data.activeManageProcessType).then((items) => {
+      this.setData({
+        managedStages: items
+      })
+    })
+  },
+
+  refreshManagedProgress() {
+    if (!this.data.canManageProcess) {
+      return
+    }
+    processService
+      .fetchManagedProgress({
+        keyword: this.data.progressKeyword,
+        processType: this.data.activeManageProcessType
+      })
+      .then((items) => {
+        this.setData({
+          managedProgress: items.map((item) => ({
+            ...item,
+            completedActionsText: (item.completedActions || []).join('、')
+          }))
+        })
+      })
+  },
+
+  editProgress(event) {
+    const studentNo = event.currentTarget.dataset.studentNo
+    const item = this.data.managedProgress.find((progress) => progress.studentNo === studentNo)
+    if (!item) {
+      return
+    }
+    this.setData({
+      progressForm: {
+        studentNo: item.studentNo,
+        processType: item.processType || this.data.activeManageProcessType,
+        currentStageCode: item.currentStageCode || '',
+        startedAt: item.startedAt || '',
+        nextDeadline: item.nextDeadline || '',
+        advisor: item.advisor || '',
+        completedActionsText: (item.completedActions || []).join('，')
+      }
+    })
+  },
+
+  submitProgress() {
+    const form = this.data.progressForm
+    if (!form.studentNo || !form.currentStageCode) {
+      wx.showToast({ title: '请填写学号和当前节点', icon: 'none' })
+      return
+    }
+    processService
+      .saveStudentProgress({
+        studentNo: form.studentNo,
+        processType: form.processType,
+        currentStageCode: form.currentStageCode,
+        startedAt: form.startedAt,
+        nextDeadline: form.nextDeadline,
+        advisor: form.advisor,
+        completedActions: form.completedActionsText
+          .split(/[,，、]/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      })
+      .then(() => {
+        wx.showToast({ title: '进度已保存', icon: 'success' })
+        this.setData({
+          progressForm: {
+            ...emptyProgressForm,
+            processType: this.data.activeManageProcessType
+          }
+        })
+        this.refreshManagedProgress()
+      })
+  },
+
+  refreshManagedStudents() {
+    profileService
+      .fetchManagedStudents({
+        keyword: this.data.studentKeyword
+      })
+      .then((items) => {
+        this.setData({
+          managedStudents: items.map((item) => ({
+            ...item,
+            sensitiveTagText: item.sensitiveVisible ? '敏感可见' : '已脱敏',
+            sensitiveTagClass: item.sensitiveVisible ? 'success' : 'neutral',
+            alumniText: item.isAlumni ? '校友/离校' : '在校'
+          }))
+        })
+      })
   }
 })
