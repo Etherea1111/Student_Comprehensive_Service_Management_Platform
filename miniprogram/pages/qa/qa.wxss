@@ -112,6 +112,16 @@
   font-size: 23rpx;
 }
 
+.match-info {
+  display: inline-flex;
+  margin-top: 14rpx;
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: #eef4ff;
+  color: #1f5fbf;
+  font-size: 23rpx;
+}
+
 .knowledge-answer {
   margin-top: 16rpx;
   padding: 18rpx;

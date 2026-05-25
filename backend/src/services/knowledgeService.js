@@ -25,11 +25,116 @@ function normalizeTextList(value) {
   return String(value || '')
 }
 
-function tokenizeKeyword(value) {
-  const normalized = String(value || '')
+const semanticSynonymGroups = [
+  ['奖学金', '奖助学金', '助学金', '奖助', '资助', '困难补助', '补助', '贫困认定', '家庭经济困难'],
+  ['入党', '党员', '党团', '推优', '积极分子', '发展对象', '预备党员', '转正'],
+  ['团员', '团组织', '团关系', '智慧团建'],
+  ['档案', '查档', '学籍档案', '毕业档案', '档案转递', '档案去向'],
+  ['宿舍', '寝室', '住宿', '换寝', '调寝', '宿舍调整'],
+  ['请假', '销假', '离校', '返校', '外出'],
+  ['证明', '在读证明', '学籍证明', '成绩证明', '证明材料'],
+  ['就业', '三方', '协议', '报到证', '派遣', '就业手续'],
+  ['医保', '医疗保险', '社保', '参保'],
+  ['心理', '心理咨询', '心理健康', '危机干预'],
+  ['课程', '选课', '重修', '补考', '缓考', '考试'],
+  ['毕业', '延毕', '休学', '复学', '退学', '学籍异动']
+]
+
+function normalizeSearchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[，。；、,.?？!！;:：()（）【】\[\]<>《》"'“”‘’\s]+/g, ' ')
     .trim()
-    .replace(/[，。；、,.?？!！;:：()（）【】\[\]\s]+/g, ' ')
-  return Array.from(new Set(normalized.split(' ').map((item) => item.trim()).filter(Boolean))).slice(0, 6)
+}
+
+function tokenizeKeyword(value) {
+  const normalized = normalizeSearchText(value)
+  const tokens = normalized.split(' ').map((item) => item.trim()).filter(Boolean)
+  const compact = normalized.replace(/\s+/g, '')
+  const shortTerms = []
+  for (let index = 0; index < compact.length - 1; index += 1) {
+    shortTerms.push(compact.slice(index, index + 2))
+  }
+  return Array.from(new Set([...tokens, ...shortTerms])).slice(0, 12)
+}
+
+function expandSemanticTokens(value) {
+  const normalized = normalizeSearchText(value)
+  const compact = normalized.replace(/\s+/g, '')
+  const baseTokens = tokenizeKeyword(value)
+  const expanded = [...baseTokens]
+
+  semanticSynonymGroups.forEach((group) => {
+    const matched = group.some((term) => normalized.includes(term.toLowerCase()) || compact.includes(term.toLowerCase()))
+    if (matched) {
+      expanded.push(...group)
+    }
+  })
+
+  return Array.from(new Set(expanded.map((item) => String(item || '').trim()).filter(Boolean))).slice(0, 24)
+}
+
+function buildSemanticSearchVector(row) {
+  return [row.title, row.category, row.answer, row.tagsText, row.keywordsText]
+    .join(' ')
+    .toLowerCase()
+}
+
+function calculateSemanticScore(row, tokens, keyword) {
+  if (!tokens.length) {
+    return 0
+  }
+  const vector = buildSemanticSearchVector(row)
+  const compactVector = vector.replace(/\s+/g, '')
+  const normalizedKeyword = normalizeSearchText(keyword)
+  const compactKeyword = normalizedKeyword.replace(/\s+/g, '')
+  let score = Number(row.matchScore || 0)
+
+  if (compactKeyword && compactVector.includes(compactKeyword)) {
+    score += 20
+  }
+
+  tokens.forEach((token) => {
+    const normalizedToken = String(token || '').toLowerCase()
+    if (!normalizedToken) {
+      return
+    }
+    const tokenMatched = vector.includes(normalizedToken) || compactVector.includes(normalizedToken)
+    if (!tokenMatched) {
+      return
+    }
+    if (String(row.title || '').toLowerCase().includes(normalizedToken)) {
+      score += 10
+    }
+    if (String(row.keywordsText || '').toLowerCase().includes(normalizedToken)) {
+      score += 7
+    }
+    if (String(row.tagsText || '').toLowerCase().includes(normalizedToken)) {
+      score += 4
+    }
+    if (String(row.answer || '').toLowerCase().includes(normalizedToken)) {
+      score += 1
+    }
+  })
+
+  return score
+}
+
+function appendMatchMetadata(items, tokens, keyword) {
+  return items
+    .map((row) => {
+      const matchScore = calculateSemanticScore(row, tokens, keyword)
+      const matchTokens = tokens.filter((token) => buildSemanticSearchVector(row).includes(String(token).toLowerCase())).slice(0, 5)
+      return {
+        ...row,
+        matchScore,
+        matchType: tokens.length ? (Number(row.matchScore || 0) > 0 ? '关键词匹配' : '语义扩展匹配') : '默认推荐',
+        matchTokens,
+        matchTokenText: matchTokens.join('、')
+      }
+    })
+    .filter((row) => !tokens.length || row.matchScore > 0)
+    .sort((left, right) => right.matchScore - left.matchScore || new Date(right.updatedAt) - new Date(left.updatedAt) || String(left.title).localeCompare(String(right.title), 'zh-Hans-CN'))
 }
 
 
@@ -143,27 +248,25 @@ async function searchKnowledge({ keyword, category }) {
   const values = []
   const conditions = ["status = 'published'"]
   const scoreParts = ['0']
+  const tokens = expandSemanticTokens(keyword)
 
   if (category && category !== '全部') {
     values.push(category)
     conditions.push(`category = $${values.length}`)
   }
 
-  if (keyword) {
-    const tokens = tokenizeKeyword(keyword)
-    if (tokens.length) {
-      const tokenConditions = []
-      tokens.forEach((token) => {
-        values.push(`%${token}%`)
-        const idx = values.length
-        tokenConditions.push(`(title ilike $${idx} or answer ilike $${idx} or keywords_text ilike $${idx} or tags_text ilike $${idx})`)
-        scoreParts.push(`case when title ilike $${idx} then 8 else 0 end`)
-        scoreParts.push(`case when keywords_text ilike $${idx} then 5 else 0 end`)
-        scoreParts.push(`case when tags_text ilike $${idx} then 3 else 0 end`)
-        scoreParts.push(`case when answer ilike $${idx} then 1 else 0 end`)
-      })
-      conditions.push(`(${tokenConditions.join(' or ')})`)
-    }
+  if (tokens.length) {
+    const tokenConditions = []
+    tokens.forEach((token) => {
+      values.push(`%${token}%`)
+      const idx = values.length
+      tokenConditions.push(`(title ilike $${idx} or answer ilike $${idx} or keywords_text ilike $${idx} or tags_text ilike $${idx})`)
+      scoreParts.push(`case when title ilike $${idx} then 8 else 0 end`)
+      scoreParts.push(`case when keywords_text ilike $${idx} then 5 else 0 end`)
+      scoreParts.push(`case when tags_text ilike $${idx} then 3 else 0 end`)
+      scoreParts.push(`case when answer ilike $${idx} then 1 else 0 end`)
+    })
+    conditions.push(`(${tokenConditions.join(' or ')})`)
   }
 
   const result = await db.query(
@@ -173,6 +276,7 @@ async function searchKnowledge({ keyword, category }) {
         title,
         category,
         tags_text as "tagsText",
+        keywords_text as "keywordsText",
         answer,
         official_link as "officialLink",
         sensitive_hint as "sensitiveHint",
@@ -182,11 +286,11 @@ async function searchKnowledge({ keyword, category }) {
       from knowledge_items
       where ${conditions.join(' and ')}
       order by "matchScore" desc, updated_at desc, title asc
-      limit 50
+      limit 80
     `,
     values
   )
-  return result.rows.map(mapKnowledgeRow)
+  return appendMatchMetadata(result.rows, tokens, keyword).slice(0, 50).map(mapKnowledgeRow)
 }
 
 async function getCategories() {

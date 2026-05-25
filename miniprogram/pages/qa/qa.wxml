@@ -31,6 +31,7 @@
           </view>
           <text class="tag">{{item.category}}</text>
         </view>
+        <view class="match-info" wx:if="{{item.matchType}}">{{item.matchType}}<text wx:if="{{item.matchTokenText}}">：{{item.matchTokenText}}</text></view>
         <view class="knowledge-answer">{{item.answer}}</view>
         <view class="sensitive" wx:if="{{item.sensitiveHint}}">{{item.sensitiveHint}}</view>
         <view class="knowledge-tags">

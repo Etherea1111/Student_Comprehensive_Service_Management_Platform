@@ -62,28 +62,93 @@ function writeFeedback(items) {
   wx.setStorageSync(FEEDBACK_STORAGE_KEY, items)
 }
 
+const semanticSynonymGroups = [
+  ['奖学金', '奖助学金', '助学金', '奖助', '资助', '困难补助', '补助', '贫困认定'],
+  ['入党', '党员', '党团', '推优', '积极分子', '发展对象', '预备党员', '转正'],
+  ['档案', '查档', '学籍档案', '毕业档案', '档案转递'],
+  ['宿舍', '寝室', '住宿', '换寝', '调寝'],
+  ['请假', '销假', '离校', '返校', '外出'],
+  ['证明', '在读证明', '学籍证明', '成绩证明'],
+  ['就业', '三方', '协议', '派遣', '就业手续'],
+  ['毕业', '延毕', '休学', '复学', '退学', '学籍异动']
+]
+
 function normalizeKeyword(value) {
-  return String(value || '').trim().toLowerCase()
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[，。；、,.?？!！;:：()（）【】\[\]\s]+/g, ' ')
+}
+
+function tokenizeKeyword(value) {
+  const normalized = normalizeKeyword(value)
+  const compact = normalized.replace(/\s+/g, '')
+  const tokens = normalized.split(' ').map((item) => item.trim()).filter(Boolean)
+  const shortTerms = []
+  for (let index = 0; index < compact.length - 1; index += 1) {
+    shortTerms.push(compact.slice(index, index + 2))
+  }
+  return Array.from(new Set(tokens.concat(shortTerms))).slice(0, 12)
+}
+
+function expandSemanticTokens(value) {
+  const normalized = normalizeKeyword(value)
+  const compact = normalized.replace(/\s+/g, '')
+  const tokens = tokenizeKeyword(value)
+  semanticSynonymGroups.forEach((group) => {
+    if (group.some((term) => normalized.indexOf(term) >= 0 || compact.indexOf(term) >= 0)) {
+      tokens.push.apply(tokens, group)
+    }
+  })
+  return Array.from(new Set(tokens)).slice(0, 24)
+}
+
+function buildKnowledgeVector(item) {
+  return [item.title, item.category, item.answer].concat(item.tags || [], item.keywords || []).join(' ').toLowerCase()
+}
+
+function calculateMatchScore(item, tokens, keyword) {
+  const vector = buildKnowledgeVector(item)
+  const compactVector = vector.replace(/\s+/g, '')
+  const compactKeyword = normalizeKeyword(keyword).replace(/\s+/g, '')
+  let score = compactKeyword && compactVector.indexOf(compactKeyword) >= 0 ? 20 : 0
+  tokens.forEach((token) => {
+    const matched = vector.indexOf(token) >= 0 || compactVector.indexOf(token) >= 0
+    if (!matched) {
+      return
+    }
+    if (String(item.title || '').toLowerCase().indexOf(token) >= 0) {
+      score += 10
+    }
+    if ((item.keywords || []).join(' ').toLowerCase().indexOf(token) >= 0) {
+      score += 7
+    }
+    if ((item.tags || []).join(' ').toLowerCase().indexOf(token) >= 0) {
+      score += 4
+    }
+    if (String(item.answer || '').toLowerCase().indexOf(token) >= 0) {
+      score += 1
+    }
+  })
+  return score
 }
 
 function searchKnowledge(keyword, category) {
-  const query = normalizeKeyword(keyword)
-  return knowledgeItems.filter((item) => {
-    const categoryMatched = !category || category === '全部' || item.category === category
-    if (!query) {
-      return categoryMatched
-    }
-    const haystack = [
-      item.title,
-      item.category,
-      item.answer,
-      ...(item.tags || []),
-      ...(item.keywords || [])
-    ]
-      .join(' ')
-      .toLowerCase()
-    return categoryMatched && haystack.indexOf(query) >= 0
-  })
+  const tokens = expandSemanticTokens(keyword)
+  return knowledgeItems
+    .filter((item) => !category || category === '全部' || item.category === category)
+    .map((item) => {
+      const matchScore = calculateMatchScore(item, tokens, keyword)
+      const matchTokens = tokens.filter((token) => buildKnowledgeVector(item).indexOf(token) >= 0).slice(0, 5)
+      return Object.assign({}, item, {
+        matchScore,
+        matchType: tokens.length ? '本地语义扩展匹配' : '默认推荐',
+        matchTokens,
+        matchTokenText: matchTokens.join('、')
+      })
+    })
+    .filter((item) => !tokens.length || item.matchScore > 0)
+    .sort((left, right) => right.matchScore - left.matchScore)
 }
 
 function fetchKnowledge(keyword, category) {
