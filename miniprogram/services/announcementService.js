@@ -165,6 +165,63 @@ function withdrawAnnouncement(id) {
   })
 }
 
+function dispatchAnnouncement(id, channels = ['miniprogram', 'email']) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve({ announcementId: id, queued: 1 })
+  }
+  return api.request({
+    url: `/announcements/${id}/dispatch`,
+    method: 'POST',
+    data: { channels }
+  })
+}
+
+function fetchDeliveries(id) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve([])
+  }
+  return api
+    .request({
+      url: `/announcements/${id}/deliveries`
+    })
+    .then((result) => result.items || [])
+    .catch(() => [])
+}
+
+function fetchSources(filters = {}) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve([])
+  }
+  return api
+    .request({
+      url: '/announcements/manage/sources',
+      data: filters
+    })
+    .then((result) => result.items || [])
+    .catch(() => [])
+}
+
+function saveSource(payload) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve({ id: payload.id || `source-local-${Date.now()}`, ...payload })
+  }
+  return api.request({
+    url: '/announcements/manage/sources',
+    method: 'POST',
+    data: payload
+  })
+}
+
+function importFromSource(id) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve({ id: `ann-local-${Date.now()}`, title: '官方来源同步草稿', status: 'draft' })
+  }
+  return api.request({
+    url: `/announcements/manage/sources/${id}/import`,
+    method: 'POST'
+  })
+}
+
 function updateLocalStatus(id, status) {
   const stored = readStorage(LOCAL_ANNOUNCEMENTS_KEY, [])
   writeStorage(
@@ -180,5 +237,10 @@ module.exports = {
   fetchManagedAnnouncements,
   saveAnnouncement,
   publishAnnouncement,
-  withdrawAnnouncement
+  withdrawAnnouncement,
+  dispatchAnnouncement,
+  fetchDeliveries,
+  fetchSources,
+  saveSource,
+  importFromSource
 }

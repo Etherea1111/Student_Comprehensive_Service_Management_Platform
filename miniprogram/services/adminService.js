@@ -50,7 +50,7 @@ function fetchOperationLogs() {
 
 function getUploadPolicy() {
   return {
-    allowedTypes: ['doc', 'docx', 'xls', 'xlsx', 'csv', 'pdf'],
+    allowedTypes: ['doc', 'docx', 'xls', 'xlsx', 'csv', 'pdf', 'jpg', 'jpeg', 'png'],
     maxSizeMB: 30,
     auditRequired: true,
     ownerRule: '谁上传，谁维护；敏感资料按角色权限控制。'
@@ -94,6 +94,60 @@ function uploadImportFile(kind, filePath, preview) {
   })
 }
 
+function fetchAccounts(filters = {}) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve([])
+  }
+  return api
+    .request({
+      url: '/admin/accounts',
+      data: filters
+    })
+    .then((result) => result.items || [])
+    .catch(() => [])
+}
+
+function saveAccount(payload) {
+  if (!api.isApiEnabled()) {
+    return Promise.reject(new Error('请先配置后端服务地址'))
+  }
+  return api.request({
+    url: '/admin/accounts',
+    method: 'PUT',
+    data: payload
+  })
+}
+
+function disableAccount(id) {
+  if (!api.isApiEnabled()) {
+    return Promise.reject(new Error('请先配置后端服务地址'))
+  }
+  return api.request({
+    url: `/admin/accounts/${id}/disable`,
+    method: 'POST'
+  })
+}
+
+function getExportUrl(kind) {
+  if (!api.isApiEnabled()) {
+    return ''
+  }
+  const endpointMap = {
+    students: '/exports/students.csv',
+    processProgress: '/exports/process-progress.csv',
+    knowledge: '/exports/knowledge.csv',
+    templates: '/exports/templates.csv',
+    approvals: '/exports/approvals.csv',
+    workRecords: '/exports/work-records.csv',
+    announcementDeliveries: '/exports/announcement-deliveries.csv'
+  }
+  return api.buildApiUrl(endpointMap[kind])
+}
+
+function getDownloadHeader() {
+  return api.getAuthHeader ? api.getAuthHeader() : {}
+}
+
 module.exports = {
   getDashboard,
   fetchDashboard,
@@ -102,5 +156,10 @@ module.exports = {
   getUploadPolicy,
   fetchUploadPolicy,
   getFutureModules,
-  uploadImportFile
+  uploadImportFile,
+  getExportUrl,
+  getDownloadHeader,
+  fetchAccounts,
+  saveAccount,
+  disableAccount
 }

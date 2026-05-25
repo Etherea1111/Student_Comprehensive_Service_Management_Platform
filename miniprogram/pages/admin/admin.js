@@ -4,6 +4,7 @@ const knowledgeService = require('../../services/knowledgeService')
 const processService = require('../../services/processService')
 const announcementService = require('../../services/announcementService')
 const approvalService = require('../../services/approvalService')
+const workRecordService = require('../../services/workRecordService')
 const authGuard = require('../../utils/authGuard')
 
 const emptyDraftForm = {
@@ -61,6 +62,53 @@ const emptyAnnouncementForm = {
   expireAt: ''
 }
 
+const targetTypeLabels = {
+  all: '全部',
+  role: '角色',
+  grade: '年级',
+  major: '专业',
+  class_name: '班级',
+  education_level: '学历层次',
+  student_no: '学号',
+  student_status: '学籍状态',
+  is_alumni: '校友'
+}
+
+const emptySourceForm = {
+  id: '',
+  sourceName: '',
+  sourceType: 'official_site',
+  sourceUrl: '',
+  defaultTags: '',
+  enabled: true
+}
+
+const emptyWorkRecordForm = {
+  id: '',
+  recordType: 'party',
+  title: '',
+  occurredAt: '',
+  organizer: '',
+  location: '',
+  participantsCount: '',
+  studentNos: '',
+  content: '',
+  materialsSummary: '',
+  visibility: 'internal',
+  status: 'published'
+}
+
+const emptyAccountForm = {
+  id: '',
+  accountName: '',
+  displayName: '',
+  role: 'class_leader',
+  studentNo: '',
+  password: '12345678',
+  extraPermissionsText: '',
+  passwordChangeDisabled: false
+}
+
 const importTasks = [
   {
     key: 'students',
@@ -88,6 +136,16 @@ const importTasks = [
   }
 ]
 
+const exportTasks = [
+  { key: 'students', title: '学生信息导出', permission: 'import_students' },
+  { key: 'processProgress', title: '党团进度导出', permission: 'manage_process' },
+  { key: 'knowledge', title: '知识库导出', permission: 'manage_public_content' },
+  { key: 'templates', title: '模板元数据导出', permission: 'manage_public_content' },
+  { key: 'approvals', title: '审批记录导出', permission: 'approve_requests' },
+  { key: 'workRecords', title: '工作记录导出', permission: 'manage_process' },
+  { key: 'announcementDeliveries', title: '通知投递导出', permission: 'manage_public_content' }
+]
+
 Page({
   data: {
     dashboard: {
@@ -103,12 +161,15 @@ Page({
     logs: [],
     futureModules: [],
     importTasks: [],
+    exportTasks: [],
     draftForm: emptyDraftForm,
     selectedFile: null,
     selectedFileName: '未选择文件',
+    selectedKnowledgeFileId: '',
     importResult: null,
     drafts: [],
     managedKnowledge: [],
+    knowledgeFeedback: [],
     stageForm: emptyStageForm,
     processTypeOptions: [
       { label: '入党', value: 'party' },
@@ -118,6 +179,7 @@ Page({
     managedStages: [],
     progressKeyword: '',
     managedProgress: [],
+    dueReminders: [],
     progressForm: emptyProgressForm,
     studentKeyword: '',
     managedStudents: [],
@@ -125,10 +187,20 @@ Page({
     canManageProcess: false,
     canApproveRequests: false,
     canReadSensitive: false,
+    canManageAccounts: false,
     templateForm: emptyTemplateForm,
     managedTemplates: [],
     announcementForm: emptyAnnouncementForm,
+    targetTypeHint: '可用目标：all、role、grade、major、class_name、education_level、student_no、student_status、is_alumni',
     managedAnnouncements: [],
+    announcementSources: [],
+    sourceForm: emptySourceForm,
+    workRecordForm: emptyWorkRecordForm,
+    workRecords: [],
+    workRecordKeyword: '',
+    accountForm: emptyAccountForm,
+    managedAccounts: [],
+    accountKeyword: '',
     approvalKeyword: '',
     managedApprovals: [],
     approvalComment: ''
@@ -156,18 +228,25 @@ Page({
         logs,
         futureModules: adminService.getFutureModules(),
         importTasks: this.buildImportTasks(dashboard.user.permissions || []),
+        exportTasks: this.buildExportTasks(dashboard.user.permissions || []),
         drafts: knowledgeService.getKnowledgeDrafts(),
         canAuditContent: this.hasDashboardPermission(dashboard.user, 'audit_content'),
         canManageProcess: this.hasDashboardPermission(dashboard.user, 'manage_process'),
         canApproveRequests: this.hasDashboardPermission(dashboard.user, 'approve_requests'),
-        canReadSensitive: this.hasDashboardPermission(dashboard.user, 'read_sensitive')
+        canReadSensitive: this.hasDashboardPermission(dashboard.user, 'read_sensitive'),
+        canManageAccounts: this.hasDashboardPermission(dashboard.user, 'manage_accounts')
       })
       this.refreshManagedKnowledge()
+      this.refreshKnowledgeFeedback()
       this.refreshManagedTemplates()
       this.refreshManagedStages()
       this.refreshManagedProgress()
+      this.refreshDueReminders()
       this.refreshManagedStudents()
       this.refreshManagedAnnouncements()
+      this.refreshAnnouncementSources()
+      this.refreshWorkRecords()
+      this.refreshManagedAccounts()
       this.refreshManagedApprovals()
     })
   },
@@ -188,6 +267,16 @@ Page({
         tagClass: enabled ? 'success' : 'neutral'
       }
     })
+  },
+
+  buildExportTasks(permissions) {
+    const allowAll = permissions.indexOf('manage_all') >= 0
+    return exportTasks.map((item) => ({
+      ...item,
+      disabled: !(allowAll || permissions.indexOf(item.permission) >= 0),
+      tagText: allowAll || permissions.indexOf(item.permission) >= 0 ? '可导出' : '无权限',
+      tagClass: allowAll || permissions.indexOf(item.permission) >= 0 ? 'success' : 'neutral'
+    }))
   },
 
   onDraftInput(event) {
@@ -240,6 +329,36 @@ Page({
     })
   },
 
+  onSourceInput(event) {
+    const field = event.currentTarget.dataset.field
+    this.setData({
+      sourceForm: {
+        ...this.data.sourceForm,
+        [field]: event.detail.value
+      }
+    })
+  },
+
+  onWorkRecordInput(event) {
+    const field = event.currentTarget.dataset.field
+    this.setData({
+      workRecordForm: {
+        ...this.data.workRecordForm,
+        [field]: event.detail.value
+      }
+    })
+  },
+
+  onAccountInput(event) {
+    const field = event.currentTarget.dataset.field
+    this.setData({
+      accountForm: {
+        ...this.data.accountForm,
+        [field]: event.detail.value
+      }
+    })
+  },
+
   onApprovalKeywordInput(event) {
     this.setData({
       approvalKeyword: event.detail.value
@@ -255,6 +374,18 @@ Page({
   onStudentKeywordInput(event) {
     this.setData({
       studentKeyword: event.detail.value
+    })
+  },
+
+  onWorkRecordKeywordInput(event) {
+    this.setData({
+      workRecordKeyword: event.detail.value
+    })
+  },
+
+  onAccountKeywordInput(event) {
+    this.setData({
+      accountKeyword: event.detail.value
     })
   },
 
@@ -338,6 +469,51 @@ Page({
     })
   },
 
+  chooseTemplateFile() {
+    if (!wx.chooseMessageFile) {
+      wx.showToast({
+        title: '当前端暂不支持文件选择',
+        icon: 'none'
+      })
+      return
+    }
+    const maxBytes = this.data.uploadPolicy.maxSizeMB * 1024 * 1024
+    wx.chooseMessageFile({
+      count: 1,
+      type: 'file',
+      extension: this.data.uploadPolicy.allowedTypes,
+      success: (res) => {
+        const file = res.tempFiles && res.tempFiles[0]
+        if (!file) {
+          return
+        }
+        if (file.size > maxBytes) {
+          wx.showToast({
+            title: `文件不能超过 ${this.data.uploadPolicy.maxSizeMB}MB`,
+            icon: 'none'
+          })
+          return
+        }
+        knowledgeService
+          .uploadTemplateFile(file.path || file.tempFilePath)
+          .then((uploaded) => {
+            this.setData({
+              templateForm: {
+                ...this.data.templateForm,
+                fileType: uploaded.fileType || this.data.templateForm.fileType,
+                size: uploaded.size || this.data.templateForm.size,
+                url: uploaded.url || uploaded.downloadPath || this.data.templateForm.url
+              }
+            })
+            wx.showToast({ title: '模板文件已上传', icon: 'success' })
+          })
+          .catch((error) => {
+            wx.showToast({ title: error.message || '上传失败', icon: 'none' })
+          })
+      }
+    })
+  },
+
   confirmImport(task, file) {
     wx.showModal({
       title: '确认导入',
@@ -383,6 +559,36 @@ Page({
       })
   },
 
+  exportData(event) {
+    const kind = event.currentTarget.dataset.kind
+    const task = this.data.exportTasks.find((item) => item.key === kind)
+    if (!task || task.disabled) {
+      wx.showToast({ title: '无权导出', icon: 'none' })
+      return
+    }
+    const url = adminService.getExportUrl(kind)
+    if (!url) {
+      wx.showToast({ title: '请先配置后端服务地址', icon: 'none' })
+      return
+    }
+    wx.downloadFile({
+      url,
+      header: adminService.getDownloadHeader(),
+      success: (res) => {
+        if (res.statusCode !== 200 || !res.tempFilePath) {
+          wx.showToast({ title: '导出失败', icon: 'none' })
+          return
+        }
+        wx.openDocument({
+          filePath: res.tempFilePath,
+          showMenu: true,
+          fail: () => wx.showToast({ title: '已下载，当前端无法预览 CSV', icon: 'none' })
+        })
+      },
+      fail: () => wx.showToast({ title: '导出失败', icon: 'none' })
+    })
+  },
+
   submitDraft() {
     const form = this.data.draftForm
     if (!form.title || !form.category || !form.answer) {
@@ -393,29 +599,37 @@ Page({
       return
     }
 
-    knowledgeService
-      .addKnowledgeDraft({
-        title: form.title,
-        category: form.category,
-        tags: form.tagsText
-          .split(/[,，]/)
-          .map((item) => item.trim())
-          .filter(Boolean),
-        keywords: form.keywordsText
-          .split(/[,，]/)
-          .map((item) => item.trim())
-          .filter(Boolean),
-        answer: form.answer,
-        officialLink: form.officialLink,
-        sensitiveHint: form.sensitiveHint,
-        owner: this.data.dashboard.user.name,
-        fileName: this.data.selectedFileName
-      })
+    const uploadFile = this.data.selectedFile
+      ? knowledgeService.uploadKnowledgeFile(this.data.selectedFile.path || this.data.selectedFile.tempFilePath)
+      : Promise.resolve(null)
+
+    uploadFile
+      .then((file) =>
+        knowledgeService.addKnowledgeDraft({
+          title: form.title,
+          category: form.category,
+          tags: form.tagsText
+            .split(/[,，]/)
+            .map((item) => item.trim())
+            .filter(Boolean),
+          keywords: form.keywordsText
+            .split(/[,，]/)
+            .map((item) => item.trim())
+            .filter(Boolean),
+          answer: form.answer,
+          officialLink: form.officialLink,
+          sensitiveHint: form.sensitiveHint,
+          owner: this.data.dashboard.user.name,
+          fileName: this.data.selectedFileName,
+          fileIds: file && file.id ? [file.id] : []
+        })
+      )
       .then(() => {
         this.setData({
           draftForm: { ...emptyDraftForm },
           selectedFile: null,
           selectedFileName: '未选择文件',
+          selectedKnowledgeFileId: '',
           drafts: knowledgeService.getKnowledgeDrafts()
         })
         this.refreshManagedKnowledge()
@@ -439,6 +653,7 @@ Page({
           ...item,
           tagsText: (item.tags || []).join('、'),
           statusClass: item.status === 'published' ? 'success' : item.status === 'rejected' ? 'warn' : 'neutral',
+          reviewCommentText: item.reviewComment ? `退回原因：${item.reviewComment}` : '',
           canPublish: item.status === 'draft' && this.data.canAuditContent,
           canReject: item.status === 'draft' && this.data.canAuditContent,
           canArchive: item.status === 'published' && this.data.dashboard.canManage
@@ -457,9 +672,70 @@ Page({
 
   rejectKnowledge(event) {
     const id = event.currentTarget.dataset.id
-    knowledgeService.rejectKnowledgeDraft(id).then(() => {
-      wx.showToast({ title: '已退回', icon: 'success' })
-      this.refreshManagedKnowledge()
+    wx.showModal({
+      title: '退回知识条目',
+      editable: true,
+      placeholderText: '请填写退回原因，便于录入人修改',
+      success: (res) => {
+        if (!res.confirm) {
+          return
+        }
+        const reason = String(res.content || '').trim()
+        if (!reason) {
+          wx.showToast({ title: '请填写退回原因', icon: 'none' })
+          return
+        }
+        knowledgeService.rejectKnowledgeDraft(id, reason).then(() => {
+          wx.showToast({ title: '已退回', icon: 'success' })
+          this.refreshManagedKnowledge()
+        })
+      }
+    })
+  },
+
+  viewKnowledgeVersions(event) {
+    const id = event.currentTarget.dataset.id
+    knowledgeService.fetchKnowledgeVersions(id).then((items) => {
+      if (!items.length) {
+        wx.showToast({ title: '暂无历史版本', icon: 'none' })
+        return
+      }
+      const content = items
+        .slice(0, 5)
+        .map((item) => `${item.createdAt || ''} ${item.action || ''} ${item.operatorName || ''}`)
+        .join('\n')
+      wx.showModal({
+        title: '最近历史',
+        content,
+        showCancel: false
+      })
+    })
+  },
+
+  refreshKnowledgeFeedback() {
+    const user = this.data.dashboard.user || {}
+    if (!this.hasDashboardPermission(user, 'manage_public_content')) {
+      return
+    }
+    knowledgeService.fetchKnowledgeFeedback({ status: '全部' }).then((items) => {
+      this.setData({
+        knowledgeFeedback: items.map((item) => ({
+          ...item,
+          statusText: item.status === 'handled' ? '已处理' : '待处理',
+          statusClass: item.status === 'handled' ? 'success' : 'warn',
+          knowledgeTitleText: item.knowledgeTitle || '未匹配条目',
+          feedbackText: item.comment || item.queryText || '未填写详情',
+          canHandle: item.status !== 'handled'
+        }))
+      })
+    })
+  },
+
+  handleKnowledgeFeedback(event) {
+    const id = event.currentTarget.dataset.id
+    knowledgeService.handleKnowledgeFeedback(id).then(() => {
+      wx.showToast({ title: '已处理', icon: 'success' })
+      this.refreshKnowledgeFeedback()
     })
   },
 
@@ -635,6 +911,72 @@ Page({
     })
   },
 
+  dispatchAnnouncement(event) {
+    const id = event.currentTarget.dataset.id
+    announcementService.dispatchAnnouncement(id, ['miniprogram', 'email']).then((result) => {
+      wx.showToast({ title: `已排队${result.queued || 0}条`, icon: 'success' })
+      this.refreshManagedAnnouncements()
+    })
+  },
+
+  refreshAnnouncementSources() {
+    if (!this.data.dashboard.canManage) {
+      return
+    }
+    announcementService.fetchSources().then((items) => {
+      this.setData({ announcementSources: items })
+    })
+  },
+
+  submitAnnouncementSource() {
+    const form = this.data.sourceForm
+    if (!form.sourceName || !form.sourceUrl) {
+      wx.showToast({ title: '请填写来源名称和链接', icon: 'none' })
+      return
+    }
+    announcementService
+      .saveSource({
+        id: form.id || undefined,
+        sourceName: form.sourceName,
+        sourceType: form.sourceType,
+        sourceUrl: form.sourceUrl,
+        defaultTags: form.defaultTags,
+        enabled: form.enabled !== false
+      })
+      .then(() => {
+        wx.showToast({ title: '来源已保存', icon: 'success' })
+        this.setData({ sourceForm: { ...emptySourceForm } })
+        this.refreshAnnouncementSources()
+      })
+  },
+
+  editAnnouncementSource(event) {
+    const id = event.currentTarget.dataset.id
+    const item = this.data.announcementSources.find((source) => String(source.id) === String(id))
+    if (!item) {
+      return
+    }
+    this.setData({
+      sourceForm: {
+        id: item.id,
+        sourceName: item.sourceName,
+        sourceType: item.sourceType || 'official_site',
+        sourceUrl: item.sourceUrl,
+        defaultTags: item.defaultTags || '',
+        enabled: item.enabled !== false
+      }
+    })
+  },
+
+  importAnnouncementSource(event) {
+    const id = event.currentTarget.dataset.id
+    announcementService.importFromSource(id).then(() => {
+      wx.showToast({ title: '已生成通知草稿', icon: 'success' })
+      this.refreshManagedAnnouncements()
+      this.refreshAnnouncementSources()
+    })
+  },
+
   withdrawAnnouncement(event) {
     const id = event.currentTarget.dataset.id
     announcementService.withdrawAnnouncement(id).then(() => {
@@ -650,8 +992,15 @@ Page({
       .filter(Boolean)
     return items.map((item) => {
       const parts = item.split(':')
+      const type = (parts[0] || 'all').trim()
+      if (!targetTypeLabels[type]) {
+        wx.showToast({
+          title: `未知目标类型：${type}`,
+          icon: 'none'
+        })
+      }
       return {
-        type: parts[0] || 'all',
+        type,
         value: parts.slice(1).join(':') || '全部'
       }
     })
@@ -720,6 +1069,7 @@ Page({
     })
     this.refreshManagedStages()
     this.refreshManagedProgress()
+    this.refreshDueReminders()
   },
 
   editStage(event) {
@@ -804,6 +1154,25 @@ Page({
       })
   },
 
+  refreshDueReminders() {
+    if (!this.data.canManageProcess) {
+      return
+    }
+    processService
+      .fetchDueReminders({
+        processType: this.data.activeManageProcessType,
+        days: 7
+      })
+      .then((items) => {
+        this.setData({
+          dueReminders: items.map((item) => ({
+            ...item,
+            statusText: item.status === 'overdue' ? '已逾期' : item.status === 'today' ? '今日到期' : `${item.daysLeft}天内`
+          }))
+        })
+      })
+  },
+
   editProgress(event) {
     const studentNo = event.currentTarget.dataset.studentNo
     const item = this.data.managedProgress.find((progress) => progress.studentNo === studentNo)
@@ -851,7 +1220,87 @@ Page({
           }
         })
         this.refreshManagedProgress()
+        this.refreshDueReminders()
       })
+  },
+
+  refreshWorkRecords() {
+    if (!this.data.canManageProcess) {
+      return
+    }
+    workRecordService
+      .fetchWorkRecords({
+        keyword: this.data.workRecordKeyword,
+        status: '全部'
+      })
+      .then((items) => {
+        this.setData({
+          workRecords: items.map((item) => ({
+            ...item,
+            statusClass: item.status === 'published' ? 'success' : item.status === 'archived' ? 'neutral' : 'warn'
+          }))
+        })
+      })
+  },
+
+  submitWorkRecord() {
+    const form = this.data.workRecordForm
+    if (!form.title || !form.occurredAt) {
+      wx.showToast({ title: '请填写标题和日期', icon: 'none' })
+      return
+    }
+    workRecordService
+      .saveWorkRecord({
+        id: form.id || undefined,
+        recordType: form.recordType,
+        title: form.title,
+        occurredAt: form.occurredAt,
+        organizer: form.organizer,
+        location: form.location,
+        participantsCount: Number(form.participantsCount) || 0,
+        studentNos: form.studentNos,
+        content: form.content,
+        materialsSummary: form.materialsSummary,
+        visibility: form.visibility,
+        status: form.status
+      })
+      .then(() => {
+        wx.showToast({ title: '工作记录已保存', icon: 'success' })
+        this.setData({ workRecordForm: { ...emptyWorkRecordForm } })
+        this.refreshWorkRecords()
+      })
+  },
+
+  editWorkRecord(event) {
+    const id = event.currentTarget.dataset.id
+    const item = this.data.workRecords.find((record) => String(record.id) === String(id))
+    if (!item) {
+      return
+    }
+    this.setData({
+      workRecordForm: {
+        id: item.id,
+        recordType: item.recordType,
+        title: item.title,
+        occurredAt: item.occurredAt,
+        organizer: item.organizer || '',
+        location: item.location || '',
+        participantsCount: item.participantsCount || '',
+        studentNos: item.studentNos || '',
+        content: item.content || '',
+        materialsSummary: item.materialsSummary || '',
+        visibility: item.visibility || 'internal',
+        status: item.status || 'published'
+      }
+    })
+  },
+
+  archiveWorkRecord(event) {
+    const id = event.currentTarget.dataset.id
+    workRecordService.archiveWorkRecord(id).then(() => {
+      wx.showToast({ title: '已归档', icon: 'success' })
+      this.refreshWorkRecords()
+    })
   },
 
   refreshManagedStudents() {
@@ -869,5 +1318,73 @@ Page({
           }))
         })
       })
+  },
+
+  refreshManagedAccounts() {
+    if (!this.data.canManageAccounts) {
+      return
+    }
+    adminService
+      .fetchAccounts({
+        keyword: this.data.accountKeyword
+      })
+      .then((items) => {
+        this.setData({ managedAccounts: items })
+      })
+  },
+
+  submitAccount() {
+    const form = this.data.accountForm
+    if (!form.accountName || !form.role) {
+      wx.showToast({ title: '请填写账号和角色', icon: 'none' })
+      return
+    }
+    adminService
+      .saveAccount({
+        id: form.id || undefined,
+        accountName: form.accountName,
+        displayName: form.displayName,
+        role: form.role,
+        studentNo: form.studentNo,
+        password: form.password,
+        extraPermissionsText: form.extraPermissionsText,
+        passwordChangeDisabled: form.passwordChangeDisabled === true
+      })
+      .then(() => {
+        wx.showToast({ title: '账号已保存', icon: 'success' })
+        this.setData({ accountForm: { ...emptyAccountForm } })
+        this.refreshManagedAccounts()
+      })
+      .catch((error) => {
+        wx.showToast({ title: error.message || '账号保存失败', icon: 'none' })
+      })
+  },
+
+  editAccount(event) {
+    const id = event.currentTarget.dataset.id
+    const item = this.data.managedAccounts.find((account) => String(account.id) === String(id))
+    if (!item) {
+      return
+    }
+    this.setData({
+      accountForm: {
+        id: item.id,
+        accountName: item.accountName,
+        displayName: item.displayName || '',
+        role: item.role,
+        studentNo: item.studentNo || '',
+        password: '',
+        extraPermissionsText: (item.extraPermissions || []).join('，'),
+        passwordChangeDisabled: item.passwordChangeDisabled === true
+      }
+    })
+  },
+
+  disableAccount(event) {
+    const id = event.currentTarget.dataset.id
+    adminService.disableAccount(id).then(() => {
+      wx.showToast({ title: '账号已禁用', icon: 'success' })
+      this.refreshManagedAccounts()
+    })
   }
 })

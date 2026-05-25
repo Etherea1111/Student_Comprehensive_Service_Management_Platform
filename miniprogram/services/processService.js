@@ -191,6 +191,37 @@ function saveStudentProgress(payload) {
   })
 }
 
+function fetchDueReminders(filters = {}) {
+  if (!api.isApiEnabled()) {
+    return fetchManagedProgress({ processType: filters.processType }).then((items) => {
+      const days = Number(filters.days || 7)
+      const now = new Date()
+      const limit = new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
+      return items
+        .filter((item) => item.nextDeadline)
+        .filter((item) => {
+          const deadline = new Date(`${item.nextDeadline}T00:00:00`)
+          return deadline <= limit
+        })
+        .map((item) => {
+          const deadline = new Date(`${item.nextDeadline}T00:00:00`)
+          return {
+            ...item,
+            daysLeft: Math.max(0, Math.ceil((deadline - now) / 86400000)),
+            status: deadline < now ? 'overdue' : 'upcoming'
+          }
+        })
+    })
+  }
+  return api
+    .request({
+      url: '/processes/reminders/due',
+      data: filters
+    })
+    .then((result) => result.items || [])
+    .catch(() => [])
+}
+
 function getReminder(type) {
   const overview = getProcessOverview(type)
   if (!overview.progress || !overview.currentStage) {
@@ -212,5 +243,6 @@ module.exports = {
   saveProcessStage,
   fetchManagedProgress,
   saveStudentProgress,
+  fetchDueReminders,
   getReminder
 }

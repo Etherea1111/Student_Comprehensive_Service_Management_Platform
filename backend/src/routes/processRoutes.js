@@ -48,6 +48,20 @@ router.get(
   })
 )
 
+router.get(
+  '/reminders/due',
+  authenticate,
+  requirePermission('manage_process'),
+  asyncHandler(async (req, res) => {
+    res.json({
+      items: await processService.listDueReminders({
+        processType: req.query.processType,
+        days: req.query.days
+      })
+    })
+  })
+)
+
 router.put(
   '/progress',
   authenticate,

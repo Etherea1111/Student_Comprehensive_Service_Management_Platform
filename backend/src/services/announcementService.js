@@ -1,9 +1,20 @@
 const db = require('../db/pool')
 const { badRequest, notFound } = require('../utils/errors')
+const notificationProvider = require('./notificationProvider')
 
 const allowedPriorities = ['low', 'normal', 'high', 'urgent']
 const allowedStatuses = ['draft', 'published', 'withdrawn', 'archived']
-const allowedTargetTypes = ['all', 'role', 'grade', 'major', 'class_name', 'education_level', 'student_no']
+const allowedTargetTypes = [
+  'all',
+  'role',
+  'grade',
+  'major',
+  'class_name',
+  'education_level',
+  'student_no',
+  'student_status',
+  'is_alumni'
+]
 
 function mapAnnouncementRow(row) {
   return {
@@ -117,6 +128,25 @@ function buildAudienceCondition(values, user) {
         and atg.target_value = s.${targetType}
     )`)
   }
+
+  audienceParts.push(`exists (
+    select 1
+    from announcement_targets atg
+    join users u on u.id = $1
+    join students s on s.id = u.student_id
+    where atg.announcement_id = a.id
+      and atg.target_type = 'student_status'
+      and atg.target_value = s.student_status
+  )`)
+  audienceParts.push(`exists (
+    select 1
+    from announcement_targets atg
+    join users u on u.id = $1
+    join students s on s.id = u.student_id
+    where atg.announcement_id = a.id
+      and atg.target_type = 'is_alumni'
+      and atg.target_value = case when s.is_alumni then 'true' else 'false' end
+  )`)
 
   return `(${audienceParts.join(' or ')})`
 }
@@ -298,11 +328,171 @@ async function publishAnnouncement(id, operator) {
     if (result.rowCount === 0) {
       throw notFound('announcement not found')
     }
-    const delivered = await createDeliveries(client, id)
+    const delivered = await createDeliveries(client, id, notificationProvider.resolveChannels())
     return {
       ...result.rows[0],
       delivered
     }
+  })
+}
+
+async function dispatchAnnouncement(id, payload = {}) {
+  return db.withTransaction(async (client) => {
+    const announcementResult = await client.query(
+      `
+        select id, title, summary, content, source_name as "sourceName", source_url as "sourceUrl"
+        from announcements
+        where id = $1 and status = 'published'
+        limit 1
+      `,
+      [id]
+    )
+    if (announcementResult.rowCount === 0) {
+      throw notFound('published announcement not found')
+    }
+    const count = await createDeliveries(client, id, notificationProvider.resolveChannels(payload.channels))
+    return { announcementId: Number(id), queued: count }
+  })
+}
+
+async function listDeliveries(announcementId) {
+  const result = await db.query(
+    `
+      select
+        ad.id,
+        ad.channel,
+        ad.delivery_status as "deliveryStatus",
+        ad.error_message as "errorMessage",
+        to_char(ad.delivered_at, 'YYYY-MM-DD HH24:MI') as "deliveredAt",
+        u.account_name as "accountName",
+        s.student_no as "studentNo",
+        coalesce(s.name, u.display_name) as name
+      from announcement_deliveries ad
+      left join users u on u.id = ad.user_id
+      left join students s on s.id = u.student_id
+      where ad.announcement_id = $1
+      order by ad.created_at desc, ad.id desc
+      limit 300
+    `,
+    [announcementId]
+  )
+  return result.rows
+}
+
+async function listSources({ keyword = '' } = {}) {
+  const values = []
+  const conditions = []
+  if (keyword) {
+    values.push(`%${keyword}%`)
+    conditions.push(`(source_name ilike $${values.length} or source_url ilike $${values.length})`)
+  }
+  const result = await db.query(
+    `
+      select
+        id,
+        source_name as "sourceName",
+        source_type as "sourceType",
+        source_url as "sourceUrl",
+        default_tags as "defaultTags",
+        enabled,
+        to_char(last_synced_at, 'YYYY-MM-DD HH24:MI') as "lastSyncedAt",
+        to_char(updated_at, 'YYYY-MM-DD HH24:MI') as "updatedAt"
+      from announcement_sources
+      ${conditions.length ? `where ${conditions.join(' and ')}` : ''}
+      order by enabled desc, updated_at desc, id desc
+      limit 100
+    `,
+    values
+  )
+  return result.rows
+}
+
+async function upsertSource(payload, operator) {
+  if (!payload || !payload.sourceName || !payload.sourceUrl) {
+    throw badRequest('sourceName and sourceUrl are required')
+  }
+  const values = [
+    payload.sourceName,
+    payload.sourceType || 'official_site',
+    payload.sourceUrl,
+    normalizeTextList(payload.defaultTags || payload.tags),
+    payload.enabled !== false,
+    operator.id
+  ]
+  let result
+  if (payload.id) {
+    result = await db.query(
+      `
+        update announcement_sources
+        set source_name = $2,
+            source_type = $3,
+            source_url = $4,
+            default_tags = $5,
+            enabled = $6,
+            updated_at = now()
+        where id = $1
+        returning id, source_name as "sourceName", source_type as "sourceType", source_url as "sourceUrl", default_tags as "defaultTags", enabled
+      `,
+      [payload.id, ...values.slice(0, 5)]
+    )
+  } else {
+    result = await db.query(
+      `
+        insert into announcement_sources (source_name, source_type, source_url, default_tags, enabled, created_by)
+        values ($1, $2, $3, $4, $5, $6)
+        returning id, source_name as "sourceName", source_type as "sourceType", source_url as "sourceUrl", default_tags as "defaultTags", enabled
+      `,
+      values
+    )
+  }
+  if (result.rowCount === 0) {
+    throw notFound('announcement source not found')
+  }
+  return result.rows[0]
+}
+
+async function importFromSource(sourceId, operator) {
+  return db.withTransaction(async (client) => {
+    const sourceResult = await client.query(
+      `
+        select id, source_name as "sourceName", source_type as "sourceType", source_url as "sourceUrl", default_tags as "defaultTags"
+        from announcement_sources
+        where id = $1 and enabled = true
+        limit 1
+      `,
+      [sourceId]
+    )
+    if (sourceResult.rowCount === 0) {
+      throw notFound('enabled announcement source not found')
+    }
+    const source = sourceResult.rows[0]
+    const title = `${source.sourceName}官方通知同步`
+    const existing = await client.query(
+      'select id from announcements where source_url = $1 limit 1',
+      [source.sourceUrl]
+    )
+    if (existing.rowCount > 0) {
+      await client.query('update announcement_sources set last_synced_at = now(), updated_at = now() where id = $1', [sourceId])
+      return getManagedAnnouncementById(client, existing.rows[0].id)
+    }
+    const result = await client.query(
+      `
+        insert into announcements (title, summary, content, source_name, source_url, priority, status, created_by)
+        values ($1, $2, $3, $4, $5, 'normal', 'draft', $6)
+        returning id
+      `,
+      [
+        title,
+        '由官方来源同步生成的通知草稿，请维护人员复核正文后发布。',
+        `来源：${source.sourceUrl}\n\n请打开官方链接核对通知正文后再发布。`,
+        source.sourceName,
+        source.sourceUrl,
+        operator.id
+      ]
+    )
+    await replaceTags(client, result.rows[0].id, splitText(source.defaultTags), operator)
+    await client.query('update announcement_sources set last_synced_at = now(), updated_at = now() where id = $1', [sourceId])
+    return getManagedAnnouncementById(client, result.rows[0].id)
   })
 }
 
@@ -472,6 +662,20 @@ function normalizeTargets(targets) {
   return normalized
 }
 
+function normalizeTextList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean).join(',')
+  }
+  return String(value || '')
+}
+
+function splitText(value) {
+  return String(value || '')
+    .split(/[;,，、|]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 function uniqueNonEmpty(values) {
   if (!Array.isArray(values)) {
     return []
@@ -479,92 +683,129 @@ function uniqueNonEmpty(values) {
   return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)))
 }
 
-async function createDeliveries(client, announcementId) {
-  const result = await client.query(
+async function createDeliveries(client, announcementId, channels = ['miniprogram']) {
+  const recipients = await client.query(
     `
-      insert into announcement_deliveries (
-        announcement_id,
-        user_id,
-        channel,
-        delivery_status,
-        delivered_at
-      )
       select
-        $1,
-        u.id,
-        'miniprogram',
-        'delivered',
-        now()
+        u.id as "userId",
+        u.account_name as "accountName",
+        u.role,
+        s.student_no as "studentNo",
+        s.name,
+        s.grade,
+        s.major,
+        s.class_name as "className",
+        s.education_level as "educationLevel",
+        s.student_status as "studentStatus",
+        s.is_alumni as "isAlumni"
       from users u
       left join students s on s.id = u.student_id and s.deleted_at is null
       where u.disabled_at is null
-        and (
-          not exists (
-            select 1
-            from announcement_targets atg
-            where atg.announcement_id = $1
-          )
-          or exists (
-            select 1
-            from announcement_targets atg
-            where atg.announcement_id = $1
-              and atg.target_type = 'all'
-          )
-          or exists (
-            select 1
-            from announcement_targets atg
-            where atg.announcement_id = $1
-              and atg.target_type = 'role'
-              and atg.target_value = u.role
-          )
-          or exists (
-            select 1
-            from announcement_targets atg
-            where atg.announcement_id = $1
-              and atg.target_type = 'student_no'
-              and atg.target_value = s.student_no
-          )
-          or exists (
-            select 1
-            from announcement_targets atg
-            where atg.announcement_id = $1
-              and atg.target_type = 'grade'
-              and atg.target_value = s.grade
-          )
-          or exists (
-            select 1
-            from announcement_targets atg
-            where atg.announcement_id = $1
-              and atg.target_type = 'major'
-              and atg.target_value = s.major
-          )
-          or exists (
-            select 1
-            from announcement_targets atg
-            where atg.announcement_id = $1
-              and atg.target_type = 'class_name'
-              and atg.target_value = s.class_name
-          )
-          or exists (
-            select 1
-            from announcement_targets atg
-            where atg.announcement_id = $1
-              and atg.target_type = 'education_level'
-              and atg.target_value = s.education_level
-          )
-        )
-        and not exists (
-          select 1
-          from announcement_deliveries ad
-          where ad.announcement_id = $1
-            and ad.user_id = u.id
-            and ad.channel = 'miniprogram'
-        )
-      returning id
+        and ${buildDeliveryAudienceSql()}
+      order by u.id asc
     `,
     [announcementId]
   )
-  return result.rowCount
+  let count = 0
+  for (const channel of channels) {
+    for (const recipient of recipients.rows) {
+      const delivery = await notificationProvider.deliver(channel, { id: announcementId }, recipient)
+      const result = await client.query(
+        `
+          insert into announcement_deliveries (
+            announcement_id,
+            user_id,
+            channel,
+            delivery_status,
+            error_message,
+            delivered_at
+          )
+          values ($1, $2, $3, $4, $5, case when $4 = 'delivered' then now() else null end)
+          on conflict (announcement_id, user_id, channel)
+          do update set
+            delivery_status = excluded.delivery_status,
+            error_message = excluded.error_message,
+            delivered_at = coalesce(excluded.delivered_at, announcement_deliveries.delivered_at)
+          returning id
+        `,
+        [announcementId, recipient.userId, channel, delivery.status, delivery.message || null]
+      )
+      count += result.rowCount
+    }
+  }
+  return count
+}
+
+function buildDeliveryAudienceSql() {
+  return `(
+    not exists (
+      select 1
+      from announcement_targets atg
+      where atg.announcement_id = $1
+    )
+    or exists (
+      select 1
+      from announcement_targets atg
+      where atg.announcement_id = $1
+        and atg.target_type = 'all'
+    )
+    or exists (
+      select 1
+      from announcement_targets atg
+      where atg.announcement_id = $1
+        and atg.target_type = 'role'
+        and atg.target_value = u.role
+    )
+    or exists (
+      select 1
+      from announcement_targets atg
+      where atg.announcement_id = $1
+        and atg.target_type = 'student_no'
+        and atg.target_value = s.student_no
+    )
+    or exists (
+      select 1
+      from announcement_targets atg
+      where atg.announcement_id = $1
+        and atg.target_type = 'grade'
+        and atg.target_value = s.grade
+    )
+    or exists (
+      select 1
+      from announcement_targets atg
+      where atg.announcement_id = $1
+        and atg.target_type = 'major'
+        and atg.target_value = s.major
+    )
+    or exists (
+      select 1
+      from announcement_targets atg
+      where atg.announcement_id = $1
+        and atg.target_type = 'class_name'
+        and atg.target_value = s.class_name
+    )
+    or exists (
+      select 1
+      from announcement_targets atg
+      where atg.announcement_id = $1
+        and atg.target_type = 'education_level'
+        and atg.target_value = s.education_level
+    )
+    or exists (
+      select 1
+      from announcement_targets atg
+      where atg.announcement_id = $1
+        and atg.target_type = 'student_status'
+        and atg.target_value = s.student_status
+    )
+    or exists (
+      select 1
+      from announcement_targets atg
+      where atg.announcement_id = $1
+        and atg.target_type = 'is_alumni'
+        and atg.target_value = case when s.is_alumni then 'true' else 'false' end
+    )
+  )`
 }
 
 module.exports = {
@@ -575,6 +816,11 @@ module.exports = {
   listManagedAnnouncements,
   upsertAnnouncement,
   publishAnnouncement,
+  dispatchAnnouncement,
+  listDeliveries,
+  listSources,
+  upsertSource,
+  importFromSource,
   withdrawAnnouncement,
   archiveAnnouncement,
   upsertTag

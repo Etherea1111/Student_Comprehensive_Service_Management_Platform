@@ -1,6 +1,7 @@
 const db = require('../db/pool')
 const { notFound } = require('../utils/errors')
 const { decryptField, maskIdCard, maskPhone } = require('../utils/cryptoField')
+const auditService = require('./auditService')
 
 async function getMe(user) {
   const result = await db.query(
@@ -95,6 +96,17 @@ async function listManagedStudents({ keyword = '' } = {}, user) {
   )
 
   const canReadSensitive = user.permissions.includes('read_sensitive') || user.permissions.includes('manage_all')
+  if (canReadSensitive) {
+    auditService
+      .record({
+        operator: user,
+        action: 'view_sensitive_students',
+        targetType: 'student',
+        targetId: keyword || 'list',
+        afterValue: { keyword, limit: result.rows.length }
+      })
+      .catch(() => {})
+  }
   return result.rows.map((row) => mapStudentRow(row, canReadSensitive))
 }
 

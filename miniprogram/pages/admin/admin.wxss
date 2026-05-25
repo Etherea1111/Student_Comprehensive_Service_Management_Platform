@@ -219,6 +219,13 @@
   font-weight: 700;
 }
 
+.form-help {
+  margin-top: 8rpx;
+  color: #667085;
+  font-size: 23rpx;
+  line-height: 1.45;
+}
+
 .form-input,
 .form-textarea {
   width: 100%;
@@ -305,6 +312,7 @@
 .template-manage-card,
 .stage-card,
 .progress-card,
+.reminder-card,
 .student-card,
 .stage-form,
 .progress-form,
@@ -321,6 +329,7 @@
 .review-top,
 .stage-head,
 .progress-head,
+.reminder-card,
 .student-head {
   display: flex;
   align-items: flex-start;
@@ -362,6 +371,15 @@
   margin-top: 12rpx;
   color: #475467;
   line-height: 1.6;
+}
+
+.review-warning {
+  margin-top: 12rpx;
+  padding: 14rpx;
+  border-left: 6rpx solid #a15c00;
+  background: #fff8ed;
+  color: #8a4b00;
+  line-height: 1.55;
 }
 
 .review-tags {

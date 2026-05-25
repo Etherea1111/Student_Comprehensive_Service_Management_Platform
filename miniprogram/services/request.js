@@ -88,8 +88,22 @@ function uploadFile(options) {
   })
 }
 
+function buildApiUrl(path) {
+  if (!isApiEnabled() || !path) {
+    return ''
+  }
+  return `${env.apiBaseUrl}${path}`
+}
+
+function getAuthHeader() {
+  const token = getToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 module.exports = {
   isApiEnabled,
+  buildApiUrl,
+  getAuthHeader,
   request,
   uploadFile,
   getToken,

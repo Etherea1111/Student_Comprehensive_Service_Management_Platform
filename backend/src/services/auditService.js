@@ -14,10 +14,12 @@ async function record(entry) {
         action,
         target_type,
         target_id,
+        before_value,
+        after_value,
         ip_address,
         device_info
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10)
     `,
     [
       entry.operator.id,
@@ -26,6 +28,8 @@ async function record(entry) {
       entry.action,
       entry.targetType || null,
       entry.targetId || null,
+      entry.beforeValue ? JSON.stringify(entry.beforeValue) : null,
+      entry.afterValue ? JSON.stringify(entry.afterValue) : null,
       entry.ipAddress || null,
       entry.deviceInfo || null
     ]

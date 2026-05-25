@@ -76,6 +76,16 @@ function submitRequest(id) {
   return Promise.resolve(updateLocalRequest(id, { status: 'pending', statusText: '待审批', currentStepText: '辅导员审批' }))
 }
 
+function fetchRequestDetail(id) {
+  if (api.isApiEnabled()) {
+    return api.request({
+      url: `/approvals/${id}`
+    })
+  }
+  const item = readLocalRequests().find((request) => String(request.id) === String(id))
+  return Promise.resolve(item || null)
+}
+
 function withdrawRequest(id) {
   if (api.isApiEnabled()) {
     return api.request({
@@ -133,6 +143,24 @@ function uploadAttachment(requestId, filePath) {
   })
 }
 
+function getAttachmentUrl(attachment) {
+  if (!attachment || !attachment.downloadPath || !api.isApiEnabled()) {
+    return ''
+  }
+  return api.buildApiUrl(attachment.downloadPath)
+}
+
+function getProofPdfUrl(request) {
+  if (!request || !request.id || !api.isApiEnabled()) {
+    return ''
+  }
+  return api.buildApiUrl(`/approvals/${request.id}/proof.pdf`)
+}
+
+function getDownloadHeader() {
+  return api.getAuthHeader ? api.getAuthHeader() : {}
+}
+
 function saveLocalRequest(payload) {
   const user = profileService.getCurrentUser()
   const now = new Date().toISOString().slice(0, 16).replace('T', ' ')
@@ -187,10 +215,14 @@ function updateLocalRequest(id, patch) {
 module.exports = {
   fetchMyRequests,
   fetchManagedRequests,
+  fetchRequestDetail,
   saveRequest,
   submitRequest,
   withdrawRequest,
   approveRequest,
   rejectRequest,
-  uploadAttachment
+  uploadAttachment,
+  getAttachmentUrl,
+  getProofPdfUrl,
+  getDownloadHeader
 }

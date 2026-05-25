@@ -41,10 +41,14 @@
         </view>
         <view class="knowledge-actions">
           <button class="secondary-button link-button" data-url="{{item.officialLink}}" bindtap="copyLink">复制官方链接</button>
+          <button class="secondary-button feedback-button" data-id="{{item.id}}" bindtap="reportKnowledgeIssue">未解决</button>
         </view>
       </view>
     </view>
-    <view class="empty" wx:else>未匹配到标准答复，可换用更短关键词，或联系负责老师补充知识库。</view>
+    <view class="empty" wx:else>
+      <view>未匹配到标准答复，可换用更短关键词，或联系负责老师补充知识库。</view>
+      <button class="secondary-button empty-feedback-button" bindtap="reportKnowledgeIssue">提交补充建议</button>
+    </view>
   </view>
 
   <view class="section">

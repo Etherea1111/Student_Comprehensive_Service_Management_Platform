@@ -1,6 +1,9 @@
+const fs = require('fs')
 const path = require('path')
 const db = require('../db/pool')
 const { badRequest, forbidden, notFound } = require('../utils/errors')
+const { decryptField, maskIdCard } = require('../utils/cryptoField')
+const { isSafeStoredPath } = require('../utils/fileStorage')
 
 const allowedTypes = ['proof', 'seal']
 const allowedStatuses = ['draft', 'pending', 'approved', 'rejected', 'withdrawn']
@@ -44,6 +47,7 @@ function normalizeStatus(status) {
 
 function mapRequestRow(row, user) {
   const sensitiveVisible = canReadSensitive(user) || hasOwnRequestAccess(row, user) || canApprove(user)
+  const nextApprovalAction = row.currentStep === 'counselor' ? '提交学院复核' : '通过'
   return {
     ...row,
     requestTypeText: requestTypeTextMap[row.requestType] || row.requestType,
@@ -58,7 +62,8 @@ function mapRequestRow(row, user) {
     canSubmit: hasOwnRequestAccess(row, user) && ['draft', 'rejected'].includes(row.status),
     canEdit: hasOwnRequestAccess(row, user) && ['draft', 'rejected'].includes(row.status),
     canWithdraw: hasOwnRequestAccess(row, user) && row.status === 'pending',
-    canApprove: canApprove(user) && row.status === 'pending'
+    canApprove: canApprove(user) && row.status === 'pending',
+    nextApprovalAction
   }
 }
 
@@ -146,13 +151,36 @@ async function getRequestDetail(id, user) {
   }
 }
 
+async function getRequestForAccess(id, user) {
+  const result = await db.query(
+    `
+      select ${requestSelectFields()}
+      from approval_requests ar
+      left join students s on s.id = ar.student_id
+      left join templates t on t.id = ar.template_id
+      where ar.id = $1
+      limit 1
+    `,
+    [id]
+  )
+  if (result.rowCount === 0) {
+    throw notFound('approval request not found')
+  }
+  const row = result.rows[0]
+  if (!hasOwnRequestAccess(row, user) && !canApprove(user) && !canReadSensitive(user)) {
+    throw forbidden('approval request is not accessible')
+  }
+  return row
+}
+
 async function saveRequest(payload, user) {
   validateRequestPayload(payload)
   const requestId = await db.withTransaction(async (client) => {
     const student = await getUserStudent(client, user.id)
     const requestType = payload.requestType
-    const status = payload.submit ? 'pending' : 'draft'
-    const submittedAt = payload.submit ? 'now()' : 'null'
+    const submitNow = Boolean(payload.submit) && !payload.deferSubmit
+    const status = submitNow ? 'pending' : 'draft'
+    const submittedAt = submitNow ? 'now()' : 'null'
     const previewContent = buildPreviewContent(payload, student)
 
     let result
@@ -172,6 +200,7 @@ async function saveRequest(payload, user) {
               template_id = $7,
               status = $8,
               current_step = case when $8 = 'pending' then 'counselor' else current_step end,
+              approval_level = case when $8 = 'pending' then 1 else approval_level end,
               preview_content = $9,
               rejection_reason = case when $8 = 'pending' then null else rejection_reason end,
               submitted_at = case when $8 = 'pending' then ${submittedAt} else submitted_at end,
@@ -230,13 +259,14 @@ async function saveRequest(payload, user) {
       )
     }
 
-    const savedRequestId = result.rows[0].id
-    if (payload.submit) {
-      await insertRecord(client, savedRequestId, user, 'submit', 'counselor', '提交申请')
-    }
-    return savedRequestId
-  })
-  return getRequestDetail(requestId, user)
+	    const savedRequestId = result.rows[0].id
+	    if (submitNow) {
+	      await validateSubmitRequirements(client, savedRequestId, payload)
+	      await insertRecord(client, savedRequestId, user, 'submit', 'counselor', '提交申请')
+	    }
+	    return savedRequestId
+	  })
+	  return getRequestDetail(requestId, user)
 }
 
 async function submitRequest(id, user) {
@@ -245,11 +275,13 @@ async function submitRequest(id, user) {
     if (!hasOwnRequestAccess(current, user) || !['draft', 'rejected'].includes(current.status)) {
       throw forbidden('approval request cannot be submitted')
     }
+    await validateSubmitRequirements(client, id)
     await client.query(
       `
         update approval_requests
         set status = 'pending',
             current_step = 'counselor',
+            approval_level = 1,
             submitted_at = now(),
             rejected_at = null,
             rejection_reason = null,
@@ -292,16 +324,33 @@ async function approveRequest(id, payload, user) {
     if (current.status !== 'pending') {
       throw badRequest('only pending requests can be approved')
     }
+    if (current.currentStep === 'counselor') {
+      await client.query(
+        `
+          update approval_requests
+          set current_step = 'college',
+              approval_level = 2,
+              approved_by = $2,
+              updated_at = now()
+          where id = $1
+        `,
+        [id, user.id]
+      )
+      await insertRecord(client, id, user, 'approve_step', current.currentStep, payload && payload.comment)
+      return
+    }
     await client.query(
       `
         update approval_requests
         set status = 'approved',
             current_step = 'completed',
+            college_reviewed_by = $2,
+            college_reviewed_at = now(),
             approved_at = now(),
             updated_at = now()
         where id = $1
       `,
-      [id]
+      [id, user.id]
     )
     await insertRecord(client, id, user, 'approve', current.currentStep, payload && payload.comment)
   })
@@ -372,6 +421,50 @@ async function addAttachment(requestId, file, user) {
   })
 }
 
+async function getAttachmentDownload(attachmentId, user) {
+  const result = await db.query(
+    `
+      select
+        aa.id,
+        aa.request_id as "requestId",
+        aa.original_name as "originalName",
+        aa.storage_path as "storagePath",
+        ar.applicant_user_id as "applicantUserId",
+        ar.status
+      from approval_attachments aa
+      join approval_requests ar on ar.id = aa.request_id
+      where aa.id = $1
+      limit 1
+    `,
+    [attachmentId]
+  )
+  if (result.rowCount === 0) {
+    throw notFound('attachment not found')
+  }
+  const row = result.rows[0]
+  if (!hasOwnRequestAccess(row, user) && !canApprove(user) && !canReadSensitive(user)) {
+    throw forbidden('attachment is not accessible')
+  }
+  if (!isSafeStoredPath(row.storagePath, path.resolve('uploads/approvals')) || !fs.existsSync(row.storagePath)) {
+    throw notFound('attachment file not found')
+  }
+  return row
+}
+
+async function getGeneratedProof(id, user, format = 'pdf') {
+  const row = await getRequestForAccess(id, user)
+  if (row.requestType !== 'proof') {
+    throw badRequest('only proof request can be generated')
+  }
+  const detail = await getProofStudentDetail(row.id)
+  const content = buildProofDocumentContent(row, detail, canReadSensitive(user) || canApprove(user))
+  return {
+    filename: `${row.requestNo || `proof-${row.id}`}.${format === 'txt' ? 'txt' : 'pdf'}`,
+    title: row.title || '证明文件',
+    content
+  }
+}
+
 async function listAttachments(requestId) {
   const result = await db.query(
     `
@@ -380,6 +473,7 @@ async function listAttachments(requestId) {
         original_name as "originalName",
         file_type as "fileType",
         file_size as "fileSize",
+        concat('/approvals/attachments/', id, '/download') as "downloadPath",
         to_char(created_at, 'YYYY-MM-DD HH24:MI') as "createdAt"
       from approval_attachments
       where request_id = $1
@@ -421,8 +515,10 @@ async function getUserStudent(client, userId) {
         s.major,
         s.class_name as "className",
         s.grade,
+        s.education_level as "educationLevel",
         s.political_status as "politicalStatus",
-        s.party_stage as "partyStage"
+        s.party_stage as "partyStage",
+        s.league_stage as "leagueStage"
       from users u
       left join students s on s.id = u.student_id and s.deleted_at is null
       where u.id = $1
@@ -431,6 +527,31 @@ async function getUserStudent(client, userId) {
     [userId]
   )
   return result.rows[0] || null
+}
+
+async function getProofStudentDetail(requestId) {
+  const result = await db.query(
+    `
+      select
+        s.student_no as "studentNo",
+        s.name,
+        s.college,
+        s.major,
+        s.class_name as "className",
+        s.grade,
+        s.education_level as "educationLevel",
+        s.political_status as "politicalStatus",
+        s.party_stage as "partyStage",
+        s.league_stage as "leagueStage",
+        s.id_card_encrypted as "idCardEncrypted"
+      from approval_requests ar
+      left join students s on s.id = ar.student_id
+      where ar.id = $1
+      limit 1
+    `,
+    [requestId]
+  )
+  return result.rows[0] || {}
 }
 
 async function getRequestForUpdate(client, id) {
@@ -472,12 +593,61 @@ function buildPreviewContent(payload, student) {
   return `${name}（学号：${studentNo}）系${college}${major ? ` ${major}` : ''}学生。兹因“${payload.purpose}”申请开具证明。具体内容以学院审核结果为准。`
 }
 
+function buildProofDocumentContent(request, student, sensitiveVisible) {
+  const idCard = decryptField(student.idCardEncrypted)
+  const idCardText = sensitiveVisible ? idCard : maskIdCard(idCard)
+  const lines = [
+    '学生证明',
+    '',
+    `兹证明 ${student.name || request.studentName || '申请人'}，学号 ${student.studentNo || request.studentNo || '未绑定'}，`,
+    `为${student.college || '信息学院'}${student.major ? `${student.major}专业` : ''}${student.grade ? `${student.grade}级` : ''}${student.educationLevel ? `${student.educationLevel}学生` : '学生'}。`,
+    idCardText ? `身份证号：${idCardText}` : '',
+    student.politicalStatus ? `政治面貌：${student.politicalStatus}` : '',
+    student.partyStage && student.partyStage !== 'none' ? `入党流程阶段：${student.partyStage}` : '',
+    student.leagueStage && student.leagueStage !== 'none' ? `入团流程阶段：${student.leagueStage}` : '',
+    '',
+    `证明用途：${request.purpose}`,
+    request.description ? `补充说明：${request.description}` : '',
+    '',
+    '本证明由信息学院学生综合服务与党团管理平台依据已登记学生信息生成，最终效力以学院审核盖章结果为准。'
+  ]
+  return lines.filter((line) => line !== '').join('\n')
+}
+
 function validateRequestPayload(payload) {
   if (!payload || !allowedTypes.includes(payload.requestType)) {
     throw badRequest('requestType must be proof or seal')
   }
   if (!payload.title || !payload.purpose) {
     throw badRequest('title and purpose are required')
+  }
+}
+
+async function validateSubmitRequirements(client, requestId, payload = {}) {
+  const result = await client.query(
+    `
+      select request_type as "requestType", confidential_description as "confidentialDescription"
+      from approval_requests
+      where id = $1
+      limit 1
+    `,
+    [requestId]
+  )
+  if (result.rowCount === 0) {
+    throw notFound('approval request not found')
+  }
+  const row = result.rows[0]
+  if (row.requestType !== 'seal') {
+    return
+  }
+  const attachmentResult = await client.query(
+    'select 1 from approval_attachments where request_id = $1 limit 1',
+    [requestId]
+  )
+  const confidentialDescription =
+    payload.confidentialDescription !== undefined ? payload.confidentialDescription : row.confidentialDescription
+  if (attachmentResult.rowCount === 0 && !String(confidentialDescription || '').trim()) {
+    throw badRequest('seal request requires an attachment or confidential description before submit')
   }
 }
 
@@ -520,6 +690,8 @@ function requestSelectFields() {
     ar.status,
     ar.current_step as "currentStep",
     ar.approval_level as "approvalLevel",
+    ar.approved_by as "approvedBy",
+    ar.college_reviewed_by as "collegeReviewedBy",
     ar.preview_content as "previewContent",
     ar.rejection_reason as "rejectionReason",
     to_char(ar.submitted_at, 'YYYY-MM-DD HH24:MI') as "submittedAt",
@@ -543,5 +715,7 @@ module.exports = {
   withdrawRequest,
   approveRequest,
   rejectRequest,
-  addAttachment
+  addAttachment,
+  getAttachmentDownload,
+  getGeneratedProof
 }

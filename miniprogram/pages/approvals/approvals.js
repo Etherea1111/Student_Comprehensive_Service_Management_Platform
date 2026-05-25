@@ -90,16 +90,24 @@ Page({
       wx.showToast({ title: '盖章申请需上传附件或填写涉密说明', icon: 'none' })
       return
     }
+    const shouldUploadFirst = submit && this.data.selectedFile
     approvalService
       .saveRequest({
         ...form,
-        submit
+        submit,
+        deferSubmit: shouldUploadFirst
       })
       .then((request) => {
-        if (this.data.selectedFile && request.id) {
-          return approvalService
-            .uploadAttachment(request.id, this.data.selectedFile.path || this.data.selectedFile.tempFilePath)
-            .then(() => request)
+        if (!this.data.selectedFile || !request.id) {
+          return request
+        }
+        return approvalService
+          .uploadAttachment(request.id, this.data.selectedFile.path || this.data.selectedFile.tempFilePath)
+          .then(() => request)
+      })
+      .then((request) => {
+        if (submit && shouldUploadFirst && request.id) {
+          return approvalService.submitRequest(request.id)
         }
         return request
       })
@@ -166,6 +174,61 @@ Page({
     }
     this.setData({
       activeRequest: item
+    })
+    approvalService.fetchRequestDetail(id).then((detail) => {
+      if (detail) {
+        this.setData({ activeRequest: detail })
+      }
+    })
+  },
+
+  openAttachment(event) {
+    const id = event.currentTarget.dataset.id
+    const attachment = ((this.data.activeRequest && this.data.activeRequest.attachments) || []).find(
+      (item) => String(item.id) === String(id)
+    )
+    const url = approvalService.getAttachmentUrl(attachment)
+    if (!url) {
+      wx.showToast({ title: '附件链接不可用', icon: 'none' })
+      return
+    }
+    wx.downloadFile({
+      url,
+      header: approvalService.getDownloadHeader(),
+      success: (res) => {
+        if (res.statusCode !== 200 || !res.tempFilePath) {
+          wx.showToast({ title: '附件下载失败', icon: 'none' })
+          return
+        }
+        wx.openDocument({
+          filePath: res.tempFilePath,
+          showMenu: true
+        })
+      },
+      fail: () => wx.showToast({ title: '附件下载失败', icon: 'none' })
+    })
+  },
+
+  openProofPdf() {
+    const url = approvalService.getProofPdfUrl(this.data.activeRequest)
+    if (!url) {
+      wx.showToast({ title: '证明下载链接不可用', icon: 'none' })
+      return
+    }
+    wx.downloadFile({
+      url,
+      header: approvalService.getDownloadHeader(),
+      success: (res) => {
+        if (res.statusCode !== 200 || !res.tempFilePath) {
+          wx.showToast({ title: '证明生成失败', icon: 'none' })
+          return
+        }
+        wx.openDocument({
+          filePath: res.tempFilePath,
+          showMenu: true
+        })
+      },
+      fail: () => wx.showToast({ title: '证明下载失败', icon: 'none' })
     })
   },
 

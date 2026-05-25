@@ -4,6 +4,7 @@ const api = require('./request')
 const DRAFT_STORAGE_KEY = 'knowledge_drafts'
 const TEMPLATE_STORAGE_KEY = 'managed_templates'
 const ARCHIVED_TEMPLATE_STORAGE_KEY = 'archived_template_ids'
+const FEEDBACK_STORAGE_KEY = 'knowledge_feedback'
 
 function readDrafts() {
   if (typeof wx === 'undefined' || !wx.getStorageSync) {
@@ -45,6 +46,20 @@ function writeDrafts(drafts) {
     return
   }
   wx.setStorageSync(DRAFT_STORAGE_KEY, drafts)
+}
+
+function readFeedback() {
+  if (typeof wx === 'undefined' || !wx.getStorageSync) {
+    return []
+  }
+  return wx.getStorageSync(FEEDBACK_STORAGE_KEY) || []
+}
+
+function writeFeedback(items) {
+  if (typeof wx === 'undefined' || !wx.setStorageSync) {
+    return
+  }
+  wx.setStorageSync(FEEDBACK_STORAGE_KEY, items)
 }
 
 function normalizeKeyword(value) {
@@ -185,6 +200,17 @@ function saveTemplate(payload) {
   })
 }
 
+function uploadTemplateFile(filePath) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve({ id: `tpl-file-local-${Date.now()}`, url: '', size: '' })
+  }
+  return api.uploadFile({
+    url: '/templates/files',
+    filePath,
+    name: 'file'
+  })
+}
+
 function archiveTemplate(id) {
   if (!api.isApiEnabled()) {
     const storedTemplates = readStoredTemplates().map((item) =>
@@ -238,6 +264,17 @@ function addKnowledgeDraft(payload) {
       .catch(() => createLocalDraft(payload))
   }
   return Promise.resolve(createLocalDraft(payload))
+}
+
+function uploadKnowledgeFile(filePath) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve({ id: `file-local-${Date.now()}`, originalName: '本地文件', fileType: 'file' })
+  }
+  return api.uploadFile({
+    url: '/knowledge/files',
+    filePath,
+    name: 'file'
+  })
 }
 
 function createLocalDraft(payload) {
@@ -321,14 +358,17 @@ function publishKnowledgeDraft(id) {
   })
 }
 
-function rejectKnowledgeDraft(id) {
+function rejectKnowledgeDraft(id, reason) {
   if (!api.isApiEnabled()) {
-    updateLocalDraftStatus(id, 'rejected', '已退回')
-    return Promise.resolve({ id, status: 'rejected' })
+    updateLocalDraftStatus(id, 'rejected', '已退回', reason)
+    return Promise.resolve({ id, status: 'rejected', reviewComment: reason })
   }
   return api.request({
     url: `/knowledge/drafts/${id}/reject`,
-    method: 'POST'
+    method: 'POST',
+    data: {
+      reason
+    }
   })
 }
 
@@ -342,17 +382,96 @@ function archiveKnowledgeItem(id) {
   })
 }
 
-function updateLocalDraftStatus(id, status, statusText) {
+function updateLocalDraftStatus(id, status, statusText, reviewComment) {
   const drafts = readDrafts().map((item) =>
     item.id === id
       ? {
           ...item,
           status,
-          statusText
+          statusText,
+          reviewComment: reviewComment || item.reviewComment || ''
         }
       : item
   )
   writeDrafts(drafts)
+}
+
+function submitKnowledgeFeedback(payload) {
+  if (!api.isApiEnabled()) {
+    const item = {
+      id: `feedback-${Date.now()}`,
+      status: 'open',
+      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      ...payload
+    }
+    const items = readFeedback()
+    items.unshift(item)
+    writeFeedback(items)
+    return Promise.resolve(item)
+  }
+  return api.request({
+    url: '/knowledge/feedback',
+    method: 'POST',
+    data: {
+      ...payload,
+      knowledgeItemId: /^\d+$/.test(String(payload.knowledgeItemId || '')) ? payload.knowledgeItemId : undefined
+    }
+  })
+}
+
+function fetchKnowledgeFeedback(filters = {}) {
+  if (!api.isApiEnabled()) {
+    const keyword = normalizeKeyword(filters.keyword)
+    return Promise.resolve(
+      readFeedback().filter((item) => {
+        const statusMatched = !filters.status || filters.status === '全部' || item.status === filters.status
+        if (!keyword) {
+          return statusMatched
+        }
+        const haystack = [item.queryText, item.comment, item.feedbackType].join(' ').toLowerCase()
+        return statusMatched && haystack.indexOf(keyword) >= 0
+      })
+    )
+  }
+  return api
+    .request({
+      url: '/knowledge/feedback/manage',
+      data: filters
+    })
+    .then((result) => result.items || [])
+    .catch(() => [])
+}
+
+function handleKnowledgeFeedback(id) {
+  if (!api.isApiEnabled()) {
+    const items = readFeedback().map((item) =>
+      String(item.id) === String(id)
+        ? {
+            ...item,
+            status: 'handled',
+            handledAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
+          }
+        : item
+    )
+    writeFeedback(items)
+    return Promise.resolve({ id, status: 'handled' })
+  }
+  return api.request({
+    url: `/knowledge/feedback/${id}/handle`,
+    method: 'POST'
+  })
+}
+
+function fetchKnowledgeVersions(id) {
+  if (!api.isApiEnabled()) {
+    return Promise.resolve([])
+  }
+  return api
+    .request({
+      url: `/knowledge/${id}/versions`
+    })
+    .then((result) => result.items || [])
+    .catch(() => [])
 }
 
 module.exports = {
@@ -363,14 +482,20 @@ module.exports = {
   getTemplates,
   fetchTemplates,
   fetchManagedTemplates,
+  uploadTemplateFile,
   saveTemplate,
   archiveTemplate,
   getTemplateCategories,
   fetchTemplateCategories,
   addKnowledgeDraft,
+  uploadKnowledgeFile,
   getKnowledgeDrafts,
   fetchManagedKnowledge,
   publishKnowledgeDraft,
   rejectKnowledgeDraft,
-  archiveKnowledgeItem
+  archiveKnowledgeItem,
+  submitKnowledgeFeedback,
+  fetchKnowledgeFeedback,
+  handleKnowledgeFeedback,
+  fetchKnowledgeVersions
 }

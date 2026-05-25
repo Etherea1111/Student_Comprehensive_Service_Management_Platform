@@ -78,12 +78,50 @@ create table if not exists knowledge_items (
   status varchar(32) not null default 'draft',
   created_by bigint references users(id),
   reviewed_by bigint references users(id),
+  review_comment text,
   reviewed_at timestamp,
   created_at timestamp not null default now(),
   updated_at timestamp not null default now()
 );
 
 create index if not exists idx_knowledge_status_category on knowledge_items(status, category);
+
+alter table knowledge_items add column if not exists review_comment text;
+
+create table if not exists knowledge_item_versions (
+  id bigserial primary key,
+  knowledge_item_id bigint not null references knowledge_items(id) on delete cascade,
+  title varchar(256) not null,
+  category varchar(64) not null,
+  tags_text text,
+  keywords_text text,
+  answer text not null,
+  official_link text,
+  sensitive_hint text,
+  owner varchar(128) not null,
+  status varchar(32) not null,
+  action varchar(32) not null,
+  comment text,
+  operator_id bigint references users(id),
+  created_at timestamp not null default now()
+);
+
+create index if not exists idx_knowledge_versions_item on knowledge_item_versions(knowledge_item_id, created_at desc);
+
+create table if not exists knowledge_feedback (
+  id bigserial primary key,
+  knowledge_item_id bigint references knowledge_items(id) on delete set null,
+  user_id bigint references users(id),
+  query_text text,
+  feedback_type varchar(32) not null,
+  comment text,
+  status varchar(32) not null default 'open',
+  handled_by bigint references users(id),
+  handled_at timestamp,
+  created_at timestamp not null default now()
+);
+
+create index if not exists idx_knowledge_feedback_status on knowledge_feedback(status, created_at desc);
 
 create table if not exists templates (
   id bigserial primary key,
@@ -171,6 +209,14 @@ create table if not exists uploaded_files (
   created_at timestamp not null default now()
 );
 
+create table if not exists knowledge_item_files (
+  knowledge_item_id bigint not null references knowledge_items(id) on delete cascade,
+  file_id bigint not null references uploaded_files(id) on delete cascade,
+  primary key (knowledge_item_id, file_id)
+);
+
+create index if not exists idx_knowledge_item_files_file on knowledge_item_files(file_id);
+
 create table if not exists announcement_tags (
   id bigserial primary key,
   tag_name varchar(64) not null unique,
@@ -202,6 +248,21 @@ create table if not exists announcements (
 
 create index if not exists idx_announcements_status_publish on announcements(status, publish_at desc);
 create index if not exists idx_announcements_expire_at on announcements(expire_at);
+
+create table if not exists announcement_sources (
+  id bigserial primary key,
+  source_name varchar(128) not null,
+  source_type varchar(32) not null default 'manual',
+  source_url text not null,
+  default_tags text,
+  enabled boolean not null default true,
+  last_synced_at timestamp,
+  created_by bigint references users(id),
+  created_at timestamp not null default now(),
+  updated_at timestamp not null default now()
+);
+
+create index if not exists idx_announcement_sources_enabled on announcement_sources(enabled, updated_at desc);
 
 create table if not exists announcement_tag_relations (
   announcement_id bigint not null references announcements(id) on delete cascade,
@@ -240,6 +301,29 @@ create table if not exists announcement_deliveries (
 
 create index if not exists idx_announcement_deliveries_user on announcement_deliveries(user_id, delivery_status);
 create index if not exists idx_announcement_deliveries_announcement on announcement_deliveries(announcement_id);
+create unique index if not exists idx_announcement_deliveries_unique_channel on announcement_deliveries(announcement_id, user_id, channel);
+
+create table if not exists work_records (
+  id bigserial primary key,
+  record_type varchar(32) not null,
+  title varchar(256) not null,
+  occurred_at date not null,
+  organizer varchar(128),
+  location varchar(128),
+  participants_count int not null default 0,
+  student_nos text,
+  content text,
+  materials_summary text,
+  visibility varchar(32) not null default 'internal',
+  status varchar(32) not null default 'published',
+  created_by bigint references users(id),
+  updated_by bigint references users(id),
+  created_at timestamp not null default now(),
+  updated_at timestamp not null default now()
+);
+
+create index if not exists idx_work_records_type_date on work_records(record_type, occurred_at desc);
+create index if not exists idx_work_records_status on work_records(status, updated_at desc);
 
 create table if not exists approval_requests (
   id bigserial primary key,
@@ -263,6 +347,10 @@ create table if not exists approval_requests (
   created_at timestamp not null default now(),
   updated_at timestamp not null default now()
 );
+
+alter table approval_requests add column if not exists approved_by bigint references users(id);
+alter table approval_requests add column if not exists college_reviewed_by bigint references users(id);
+alter table approval_requests add column if not exists college_reviewed_at timestamp;
 
 create index if not exists idx_approval_requests_applicant on approval_requests(applicant_user_id, created_at desc);
 create index if not exists idx_approval_requests_status_step on approval_requests(status, current_step, created_at desc);
@@ -308,5 +396,8 @@ create table if not exists operation_logs (
   device_info text,
   created_at timestamp not null default now()
 );
+
+alter table operation_logs add column if not exists before_value jsonb;
+alter table operation_logs add column if not exists after_value jsonb;
 
 create index if not exists idx_operation_logs_created_at on operation_logs(created_at desc);

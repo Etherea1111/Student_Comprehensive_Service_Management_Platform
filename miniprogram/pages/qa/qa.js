@@ -96,5 +96,47 @@ Page({
     const id = event.currentTarget.dataset.id
     const template = this.data.templates.find((item) => item.id === id)
     templateService.openTemplate(template)
+  },
+
+  reportKnowledgeIssue(event) {
+    const itemId = event.currentTarget.dataset.id || ''
+    const feedbackType = itemId ? 'unresolved' : 'missing'
+    wx.showModal({
+      title: itemId ? '反馈答复问题' : '提交补充建议',
+      editable: true,
+      placeholderText: '请说明未解决的问题或希望补充的政策',
+      success: (res) => {
+        if (!res.confirm) {
+          return
+        }
+        const comment = String(res.content || '').trim()
+        if (!comment && !this.data.keyword) {
+          wx.showToast({
+            title: '请填写反馈内容',
+            icon: 'none'
+          })
+          return
+        }
+        knowledgeService
+          .submitKnowledgeFeedback({
+            knowledgeItemId: itemId || undefined,
+            queryText: this.data.keyword,
+            feedbackType,
+            comment
+          })
+          .then(() => {
+            wx.showToast({
+              title: '已提交反馈',
+              icon: 'success'
+            })
+          })
+          .catch((error) => {
+            wx.showToast({
+              title: error.message || '反馈提交失败',
+              icon: 'none'
+            })
+          })
+      }
+    })
   }
 })

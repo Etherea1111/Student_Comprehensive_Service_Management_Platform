@@ -37,6 +37,7 @@ function resolvePermissions(role, extraPermissions = []) {
     permissions.add('import_students')
     permissions.add('import_quiz')
     permissions.add('manage_permissions')
+    permissions.add('manage_accounts')
     permissions.add('view_statistics')
     permissions.add('view_operation_records')
   }

@@ -5,6 +5,10 @@ const asyncHandler = require('../utils/asyncHandler')
 const { authenticate, requirePermission } = require('../middlewares/auth')
 const audit = require('../middlewares/audit')
 const approvalService = require('../services/approvalService')
+const { ensureDir, getDownloadName } = require('../utils/fileStorage')
+const { sendTextAsPdf } = require('../utils/exportUtils')
+
+ensureDir('uploads/approvals')
 
 const upload = multer({
   dest: 'uploads/approvals',
@@ -14,6 +18,15 @@ const upload = multer({
 })
 
 const router = express.Router()
+
+router.get(
+  '/attachments/:attachmentId/download',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const attachment = await approvalService.getAttachmentDownload(req.params.attachmentId, req.user)
+    res.download(attachment.storagePath, getDownloadName(attachment.originalName, `attachment-${attachment.id}`))
+  })
+)
 
 router.get(
   '/mine',
@@ -45,6 +58,26 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     res.json(await approvalService.getRequestDetail(req.params.id, req.user))
+  })
+)
+
+router.get(
+  '/:id/proof.pdf',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const proof = await approvalService.getGeneratedProof(req.params.id, req.user, 'pdf')
+    sendTextAsPdf(res, proof.filename, proof.title, proof.content)
+  })
+)
+
+router.get(
+  '/:id/proof.txt',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const proof = await approvalService.getGeneratedProof(req.params.id, req.user, 'txt')
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${proof.filename}"`)
+    res.send(proof.content)
   })
 )
 

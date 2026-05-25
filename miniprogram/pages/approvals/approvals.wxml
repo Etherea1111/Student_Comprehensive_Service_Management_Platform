@@ -80,6 +80,18 @@
       <view class="detail-block" wx:if="{{activeRequest.description}}">{{activeRequest.description}}</view>
       <view class="detail-block sensitive" wx:if="{{activeRequest.confidentialDescription}}">{{activeRequest.confidentialDescription}}</view>
       <view class="detail-block" wx:if="{{activeRequest.previewContent}}">{{activeRequest.previewContent}}</view>
+      <view class="detail-actions" wx:if="{{activeRequest.requestType === 'proof'}}">
+        <button class="secondary-button compact-button" bindtap="openProofPdf">查看证明 PDF</button>
+      </view>
+      <view class="attachment-list" wx:if="{{activeRequest.attachments && activeRequest.attachments.length}}">
+        <view class="attachment-item" wx:for="{{activeRequest.attachments}}" wx:key="id">
+          <view>
+            <view class="attachment-title">{{item.originalName}}</view>
+            <view class="attachment-meta">{{item.fileType}} · {{item.createdAt}}</view>
+          </view>
+          <button class="secondary-button compact-button" data-id="{{item.id}}" bindtap="openAttachment">查看</button>
+        </view>
+      </view>
     </view>
   </view>
 </view>

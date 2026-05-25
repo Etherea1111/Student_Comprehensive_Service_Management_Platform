@@ -61,6 +61,36 @@ router.get(
   })
 )
 
+router.get(
+  '/manage/sources',
+  authenticate,
+  requirePermission('manage_public_content'),
+  asyncHandler(async (req, res) => {
+    res.json({ items: await announcementService.listSources({ keyword: req.query.keyword }) })
+  })
+)
+
+router.post(
+  '/manage/sources',
+  authenticate,
+  requirePermission('manage_public_content'),
+  audit('upsert_announcement_source', 'announcement_source'),
+  asyncHandler(async (req, res) => {
+    const result = await announcementService.upsertSource(req.body, req.user)
+    res.status(req.body && req.body.id ? 200 : 201).json(result)
+  })
+)
+
+router.post(
+  '/manage/sources/:id/import',
+  authenticate,
+  requirePermission('manage_public_content'),
+  audit('import_announcement_source', 'announcement_source'),
+  asyncHandler(async (req, res) => {
+    res.status(201).json(await announcementService.importFromSource(req.params.id, req.user))
+  })
+)
+
 router.post(
   '/manage/tags',
   authenticate,
@@ -95,6 +125,25 @@ router.post(
   audit('publish_announcement', 'announcement'),
   asyncHandler(async (req, res) => {
     res.json(await announcementService.publishAnnouncement(req.params.id, req.user))
+  })
+)
+
+router.post(
+  '/:id/dispatch',
+  authenticate,
+  requirePermission('manage_public_content'),
+  audit('dispatch_announcement', 'announcement_delivery'),
+  asyncHandler(async (req, res) => {
+    res.json(await announcementService.dispatchAnnouncement(req.params.id, req.body))
+  })
+)
+
+router.get(
+  '/:id/deliveries',
+  authenticate,
+  requirePermission('manage_public_content'),
+  asyncHandler(async (req, res) => {
+    res.json({ items: await announcementService.listDeliveries(req.params.id) })
   })
 )
 

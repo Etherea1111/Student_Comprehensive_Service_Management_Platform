@@ -202,6 +202,51 @@ async function listProgress({ keyword = '', processType = '' } = {}) {
   }))
 }
 
+async function listDueReminders({ processType = '', days = 7 } = {}) {
+  const values = []
+  const conditions = [
+    's.deleted_at is null',
+    'pp.next_deadline is not null',
+    `pp.next_deadline <= current_date + ($1::int * interval '1 day')`
+  ]
+  values.push(Number(days) >= 0 ? Number(days) : 7)
+  const normalizedType = normalizeProcessType(processType)
+  if (normalizedType) {
+    values.push(normalizedType)
+    conditions.push(`pp.process_type = $${values.length}`)
+  }
+
+  const result = await db.query(
+    `
+      select
+        s.student_no as "studentNo",
+        s.name,
+        s.class_name as "className",
+        s.grade,
+        s.major,
+        pp.process_type as "processType",
+        pp.current_stage_code as "currentStageCode",
+        ps.name as "currentStageName",
+        to_char(pp.next_deadline, 'YYYY-MM-DD') as "nextDeadline",
+        greatest((pp.next_deadline - current_date)::int, 0) as "daysLeft",
+        case
+          when pp.next_deadline < current_date then 'overdue'
+          when pp.next_deadline = current_date then 'today'
+          else 'upcoming'
+        end as status
+      from process_progress pp
+      join students s on s.id = pp.student_id
+      left join process_stages ps on ps.process_type = pp.process_type
+        and ps.stage_code = pp.current_stage_code
+      where ${conditions.join(' and ')}
+      order by pp.next_deadline asc, s.grade desc, s.class_name asc, s.student_no asc
+      limit 200
+    `,
+    values
+  )
+  return result.rows
+}
+
 async function upsertStudentProgress(payload, operator) {
   if (!payload || !payload.studentNo || !payload.processType || !payload.currentStageCode) {
     throw badRequest('studentNo, processType and currentStageCode are required')
@@ -304,5 +349,6 @@ module.exports = {
   listProcessStages,
   upsertProcessConfig,
   listProgress,
+  listDueReminders,
   upsertStudentProgress
 }

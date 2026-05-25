@@ -1,5 +1,6 @@
 const db = require('../db/pool')
 const { badRequest, notFound } = require('../utils/errors')
+const { uploadKnowledgeFile } = require('./knowledgeService')
 
 async function listTemplates({ category }) {
   const values = []
@@ -162,6 +163,15 @@ async function upsertTemplate(payload, operator) {
   return result.rows[0]
 }
 
+async function uploadTemplateFile(file, operator) {
+  const uploaded = await uploadKnowledgeFile(file, operator)
+  return {
+    ...uploaded,
+    url: uploaded.downloadPath,
+    size: formatSize(uploaded.fileSize)
+  }
+}
+
 async function archiveTemplate(id) {
   const result = await db.query(
     `
@@ -185,10 +195,22 @@ function validateTemplatePayload(payload) {
   }
 }
 
+function formatSize(size) {
+  const bytes = Number(size || 0)
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`
+  }
+  if (bytes >= 1024) {
+    return `${Math.ceil(bytes / 1024)}KB`
+  }
+  return `${bytes}B`
+}
+
 module.exports = {
   listTemplates,
   getCategories,
   listManagedTemplates,
+  uploadTemplateFile,
   upsertTemplate,
   archiveTemplate
 }
