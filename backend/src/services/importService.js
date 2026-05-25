@@ -192,13 +192,16 @@ async function importStudents(filePath, operator) {
             household_register_encrypted,
             ethnicity,
             advisor,
+            advisor_encrypted,
             student_status,
+            student_status_encrypted,
             is_alumni,
             awards,
             remark,
+            remark_encrypted,
             updated_by
           )
-          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
           on conflict (student_no)
           do update set
             name = excluded.name,
@@ -216,10 +219,13 @@ async function importStudents(filePath, operator) {
             household_register_encrypted = excluded.household_register_encrypted,
             ethnicity = excluded.ethnicity,
             advisor = excluded.advisor,
+            advisor_encrypted = excluded.advisor_encrypted,
             student_status = excluded.student_status,
+            student_status_encrypted = excluded.student_status_encrypted,
             is_alumni = excluded.is_alumni,
             awards = excluded.awards,
             remark = excluded.remark,
+            remark_encrypted = excluded.remark_encrypted,
             updated_by = excluded.updated_by,
             updated_at = now()
         `,
@@ -240,10 +246,13 @@ async function importStudents(filePath, operator) {
           encryptField(item.householdRegister),
           item.ethnicity || null,
           item.advisor || null,
-          item.studentStatus,
+          encryptField(item.advisor),
+          item.studentStatus || '在读',
+          encryptField(item.studentStatus || '在读'),
           item.isAlumni,
           item.awards || null,
           item.remark || null,
+          encryptField(item.remark),
           operator.id
         ]
       )

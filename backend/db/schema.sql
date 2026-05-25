@@ -19,15 +19,23 @@ create table if not exists students (
   household_register_encrypted text,
   ethnicity varchar(64),
   advisor varchar(64),
+  advisor_encrypted text,
   student_status varchar(32) not null default '在读',
+  student_status_encrypted text,
   is_alumni boolean not null default false,
   awards text,
   remark text,
+  remark_encrypted text,
   updated_by bigint,
   created_at timestamp not null default now(),
   updated_at timestamp not null default now(),
   deleted_at timestamp
 );
+
+
+alter table students add column if not exists advisor_encrypted text;
+alter table students add column if not exists student_status_encrypted text;
+alter table students add column if not exists remark_encrypted text;
 
 create table if not exists users (
   id bigserial primary key,

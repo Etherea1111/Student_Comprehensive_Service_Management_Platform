@@ -72,10 +72,13 @@ async function listManagedStudents({ keyword = '' } = {}, user) {
         s.household_register_encrypted as "householdRegisterEncrypted",
         s.ethnicity,
         s.advisor,
+        s.advisor_encrypted as "advisorEncrypted",
         s.student_status as "studentStatus",
+        s.student_status_encrypted as "studentStatusEncrypted",
         s.is_alumni as "isAlumni",
         s.awards,
         s.remark,
+        s.remark_encrypted as "remarkEncrypted",
         u.role,
         u.account_name as "accountName",
         u.extra_permissions as "extraPermissions",
@@ -115,6 +118,9 @@ function mapStudentRow(row, canReadSensitive) {
   const idCard = decryptField(row.idCardEncrypted)
   const birthplace = decryptField(row.birthplaceEncrypted)
   const householdRegister = decryptField(row.householdRegisterEncrypted)
+  const advisor = decryptField(row.advisorEncrypted) || row.advisor || ''
+  const studentStatus = decryptField(row.studentStatusEncrypted) || row.studentStatus || ''
+  const remark = decryptField(row.remarkEncrypted) || row.remark || ''
   return {
     id: row.id,
     studentNo: row.studentNo,
@@ -128,11 +134,11 @@ function mapStudentRow(row, canReadSensitive) {
     partyStage: row.partyStage,
     leagueStage: row.leagueStage,
     ethnicity: row.ethnicity,
-    advisor: canReadSensitive ? row.advisor : row.advisor ? '已隐藏' : '',
-    studentStatus: canReadSensitive ? row.studentStatus : maskStatus(row.studentStatus),
+    advisor: canReadSensitive ? advisor : advisor ? '已隐藏' : '',
+    studentStatus: canReadSensitive ? studentStatus : maskStatus(studentStatus),
     isAlumni: row.isAlumni,
     awards: row.awards,
-    remark: canReadSensitive ? row.remark : row.remark ? '已隐藏' : '',
+    remark: canReadSensitive ? remark : remark ? '已隐藏' : '',
     role: row.role || 'student',
     accountName: row.accountName,
     extraPermissions: row.extraPermissions || [],
