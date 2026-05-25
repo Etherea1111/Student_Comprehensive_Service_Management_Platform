@@ -31,6 +31,7 @@ async function registerAccount({ accountName, password, displayName }) {
           display_name as name,
           role,
           must_change_password as "mustChangePassword",
+          password_change_disabled as "passwordChangeDisabled",
           extra_permissions as "extraPermissions",
           created_at as "createdAt"
       `,
@@ -67,6 +68,7 @@ async function bindStudent({ userId, studentNo, name }) {
           u.student_id as "studentId",
           u.role,
           u.must_change_password as "mustChangePassword",
+          u.password_change_disabled as "passwordChangeDisabled",
           u.extra_permissions as "extraPermissions",
           u.created_at as "createdAt",
           s.student_no as "studentNo",
@@ -84,6 +86,15 @@ async function bindStudent({ userId, studentNo, name }) {
     const currentUser = currentResult.rows[0]
 
     if (currentUser.studentNo) {
+      await client.query('update users set last_login_at = now() where id = $1', [currentUser.id])
+      return {
+        token: signToken(currentUser),
+        user: currentUser,
+        bindingRequired: false
+      }
+    }
+
+    if (currentUser.role !== 'student') {
       await client.query('update users set last_login_at = now() where id = $1', [currentUser.id])
       return {
         token: signToken(currentUser),
@@ -113,6 +124,7 @@ async function bindStudent({ userId, studentNo, name }) {
           account_name as "accountName",
           role,
           must_change_password as "mustChangePassword",
+          password_change_disabled as "passwordChangeDisabled",
           extra_permissions as "extraPermissions",
           created_at as "createdAt"
         from users
@@ -161,6 +173,7 @@ async function bindStudent({ userId, studentNo, name }) {
           account_name as "accountName",
           role,
           must_change_password as "mustChangePassword",
+          password_change_disabled as "passwordChangeDisabled",
           extra_permissions as "extraPermissions",
           created_at as "createdAt"
       `,
@@ -220,9 +233,10 @@ async function loginWithPassword({ accountName, studentNo, password }) {
         u.role,
         u.password_hash as "passwordHash",
         u.must_change_password as "mustChangePassword",
+        u.password_change_disabled as "passwordChangeDisabled",
         u.extra_permissions as "extraPermissions",
         s.student_no as "studentNo",
-        s.name
+        coalesce(s.name, u.display_name) as name
       from users u
       left join students s on s.id = u.student_id and s.deleted_at is null
       where lower(u.account_name) = $1
@@ -243,7 +257,7 @@ async function loginWithPassword({ accountName, studentNo, password }) {
     token: signToken(user),
     user,
     mustChangePassword: user.mustChangePassword,
-    bindingRequired: !user.studentNo
+    bindingRequired: user.role === 'student' && !user.studentNo
   }
 }
 
@@ -257,7 +271,9 @@ async function changePassword(user, { oldPassword, newPassword }) {
 
   const result = await db.query(
     `
-      select password_hash as "passwordHash"
+      select
+        password_hash as "passwordHash",
+        password_change_disabled as "passwordChangeDisabled"
       from users
       where id = $1 and disabled_at is null
     `,
@@ -265,6 +281,9 @@ async function changePassword(user, { oldPassword, newPassword }) {
   )
   if (result.rowCount === 0 || !verifyPassword(oldPassword, result.rows[0].passwordHash)) {
     throw unauthorized('old password is incorrect')
+  }
+  if (result.rows[0].passwordChangeDisabled) {
+    throw unauthorized('password change is disabled for this account')
   }
 
   await db.query(
@@ -292,6 +311,7 @@ function signToken(user) {
       name: user.name,
       role: user.role,
       mustChangePassword: user.mustChangePassword,
+      passwordChangeDisabled: user.passwordChangeDisabled,
       permissions: user.extraPermissions || user.permissions || []
     },
     env.jwtSecret,

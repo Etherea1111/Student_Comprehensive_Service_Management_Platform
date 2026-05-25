@@ -59,6 +59,7 @@ function authenticate(req, res, next) {
       studentNo: payload.studentNo,
       name: payload.name,
       role: payload.role || 'student',
+      passwordChangeDisabled: Boolean(payload.passwordChangeDisabled),
       permissions: resolvePermissions(payload.role || 'student', payload.permissions || [])
     }
     if (!req.user.studentNo && req.user.role === 'student') {

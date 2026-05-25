@@ -9,9 +9,9 @@ async function getMe(user) {
         u.id,
         u.account_name as "accountName",
         u.role,
-        s.student_no as "studentNo",
+        coalesce(s.student_no, u.account_name) as "studentNo",
         coalesce(s.name, u.display_name) as name,
-        s.college,
+        coalesce(s.college, '信息学院') as college,
         s.major,
         s.class_name as "className",
         s.grade,
@@ -21,7 +21,8 @@ async function getMe(user) {
         s.student_status as "studentStatus",
         s.is_alumni as "isAlumni",
         s.ethnicity,
-        s.advisor
+        s.advisor,
+        u.password_change_disabled as "passwordChangeDisabled"
       from users u
       left join students s on s.id = u.student_id
       where u.id = $1
@@ -36,7 +37,8 @@ async function getMe(user) {
   return {
     ...result.rows[0],
     permissions: user.permissions,
-    isAdminAccount: user.role !== 'student' || user.permissions.some((item) => item.startsWith('manage_'))
+    isAdminAccount: user.role !== 'student' || user.permissions.some((item) => item.startsWith('manage_')),
+    canChangePassword: !result.rows[0].passwordChangeDisabled
   }
 }
 

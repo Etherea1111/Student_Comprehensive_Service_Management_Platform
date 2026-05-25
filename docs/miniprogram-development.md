@@ -82,6 +82,8 @@ miniprogram/
 - 学院领导
 - 超级管理员
 
+初始化数据内置独立超级管理员账号 `2024000001`，密码 `123456`。该账号不绑定学生信息，拥有 `super_admin` 的全部权限，且不支持在小程序内修改密码。
+
 ## 后端接口
 
 当前页面只调用 `services/` 层。现在已提供 `miniprogram/config/env.js` 和 `services/request.js`，配置后端 HTTPS 地址后，小程序会优先调用真实 API；未配置时继续使用本地数据兜底。

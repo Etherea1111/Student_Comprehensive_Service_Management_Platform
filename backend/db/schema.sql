@@ -37,6 +37,7 @@ create table if not exists users (
   role varchar(32) not null default 'student',
   password_hash text,
   must_change_password boolean not null default true,
+  password_change_disabled boolean not null default false,
   extra_permissions jsonb not null default '[]',
   password_updated_at timestamp,
   last_login_at timestamp,
@@ -46,6 +47,7 @@ create table if not exists users (
 );
 
 alter table users add column if not exists account_name varchar(64);
+alter table users add column if not exists password_change_disabled boolean not null default false;
 drop index if exists idx_users_openid;
 alter table users drop column if exists openid;
 drop table if exists password_reset_requests;

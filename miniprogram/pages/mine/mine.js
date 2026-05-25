@@ -9,6 +9,7 @@ Page({
     avatarText: '',
     adminAccountText: '',
     canEnterAdmin: false,
+    canChangePassword: true,
     permissionItems: [],
     sensitiveVisibleText: ''
   },
@@ -32,7 +33,8 @@ Page({
         canEnterAdmin:
           permissions.indexOf('manage_public_content') >= 0 ||
           permissions.indexOf('view_operation_records') >= 0 ||
-          permissions.indexOf('manage_all') >= 0
+          permissions.indexOf('manage_all') >= 0,
+        canChangePassword: user.canChangePassword !== false
       })
     })
   },

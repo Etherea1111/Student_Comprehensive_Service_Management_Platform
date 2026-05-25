@@ -45,6 +45,44 @@ do update set
   password_hash = coalesce(users.password_hash, excluded.password_hash),
   must_change_password = users.must_change_password;
 
+update users
+set
+  student_id = null,
+  display_name = '超级管理员',
+  role = 'super_admin',
+  password_hash = 'pbkdf2$120000$26c028f12026837fecdbcfa7918813dc$d9e077dcf832e3b09cb9dbc1753009dc43432ab8ddd9e8da45493de71e051c927bc19b12160b875d4d9e9530663f6da80cbc11bda0a7416a0d7190e40afcee27',
+  must_change_password = false,
+  password_change_disabled = true,
+  extra_permissions = '[]',
+  disabled_at = null,
+  updated_at = now()
+where lower(account_name) = '2024000001';
+
+insert into users (
+  account_name,
+  student_id,
+  display_name,
+  role,
+  password_hash,
+  must_change_password,
+  password_change_disabled,
+  extra_permissions
+)
+select
+  '2024000001',
+  null,
+  '超级管理员',
+  'super_admin',
+  'pbkdf2$120000$26c028f12026837fecdbcfa7918813dc$d9e077dcf832e3b09cb9dbc1753009dc43432ab8ddd9e8da45493de71e051c927bc19b12160b875d4d9e9530663f6da80cbc11bda0a7416a0d7190e40afcee27',
+  false,
+  true,
+  '[]'
+where not exists (
+  select 1
+  from users
+  where lower(account_name) = '2024000001'
+);
+
 insert into knowledge_items (title, category, tags_text, keywords_text, answer, official_link, owner, status)
 values
 ('奖学金评定常见问题', '奖助学金', '奖学金,评奖评优,成绩排名', '奖学金,评奖,评优,综测,综合测评,成绩排名', '奖学金评定以学院当年发布的评奖评优通知为准，通常综合考虑课程成绩、综合测评、处分记录、材料提交时间等因素。请先查看通知附件中的申报条件和时间安排。', 'https://example.edu.cn/scholarship', '学院团委', 'published'),

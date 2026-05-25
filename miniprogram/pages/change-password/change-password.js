@@ -1,10 +1,22 @@
 const authService = require('../../services/authService')
+const profileService = require('../../services/profileService')
 
 Page({
   data: {
     oldPassword: '',
     newPassword: '',
     confirmPassword: ''
+  },
+
+  onLoad() {
+    profileService.fetchCurrentUser().then((user) => {
+      if (user.canChangePassword === false) {
+        wx.showToast({ title: '该账号不支持修改密码', icon: 'none' })
+        setTimeout(() => {
+          wx.reLaunch({ url: '/pages/home/home' })
+        }, 600)
+      }
+    })
   },
 
   onOldPasswordInput(event) {
