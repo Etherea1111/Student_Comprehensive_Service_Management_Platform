@@ -166,6 +166,76 @@ create table if not exists uploaded_files (
   created_at timestamp not null default now()
 );
 
+create table if not exists announcement_tags (
+  id bigserial primary key,
+  tag_name varchar(64) not null unique,
+  description text,
+  enabled boolean not null default true,
+  created_by bigint references users(id),
+  created_at timestamp not null default now(),
+  updated_at timestamp not null default now()
+);
+
+create table if not exists announcements (
+  id bigserial primary key,
+  title varchar(256) not null,
+  summary text,
+  content text not null,
+  source_name varchar(128),
+  source_url text,
+  priority varchar(32) not null default 'normal',
+  status varchar(32) not null default 'draft',
+  publish_at timestamp,
+  expire_at timestamp,
+  created_by bigint references users(id),
+  published_by bigint references users(id),
+  published_at timestamp,
+  withdrawn_at timestamp,
+  created_at timestamp not null default now(),
+  updated_at timestamp not null default now()
+);
+
+create index if not exists idx_announcements_status_publish on announcements(status, publish_at desc);
+create index if not exists idx_announcements_expire_at on announcements(expire_at);
+
+create table if not exists announcement_tag_relations (
+  announcement_id bigint not null references announcements(id) on delete cascade,
+  tag_id bigint not null references announcement_tags(id) on delete cascade,
+  primary key (announcement_id, tag_id)
+);
+
+create table if not exists announcement_targets (
+  id bigserial primary key,
+  announcement_id bigint not null references announcements(id) on delete cascade,
+  target_type varchar(32) not null,
+  target_value varchar(128) not null,
+  created_at timestamp not null default now(),
+  unique(announcement_id, target_type, target_value)
+);
+
+create index if not exists idx_announcement_targets_lookup on announcement_targets(target_type, target_value);
+
+create table if not exists announcement_reads (
+  announcement_id bigint not null references announcements(id) on delete cascade,
+  user_id bigint not null references users(id) on delete cascade,
+  read_at timestamp not null default now(),
+  primary key (announcement_id, user_id)
+);
+
+create table if not exists announcement_deliveries (
+  id bigserial primary key,
+  announcement_id bigint not null references announcements(id) on delete cascade,
+  user_id bigint references users(id),
+  channel varchar(32) not null default 'miniprogram',
+  delivery_status varchar(32) not null default 'pending',
+  error_message text,
+  delivered_at timestamp,
+  created_at timestamp not null default now()
+);
+
+create index if not exists idx_announcement_deliveries_user on announcement_deliveries(user_id, delivery_status);
+create index if not exists idx_announcement_deliveries_announcement on announcement_deliveries(announcement_id);
+
 create table if not exists operation_logs (
   id bigserial primary key,
   operator_id bigint,
