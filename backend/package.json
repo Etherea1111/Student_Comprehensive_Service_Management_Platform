@@ -8,7 +8,8 @@
     "dev": "node src/server.js",
     "start": "node src/server.js",
     "db:init": "node scripts/init-db.js",
-    "check": "node --check src/server.js && find src -name '*.js' -not -name 'server.js' -exec node --check {} \\;"
+    "check": "node --check src/server.js && find src -name '*.js' -not -name 'server.js' -exec node --check {} \\;",
+    "db:verify": "node scripts/verify-db.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

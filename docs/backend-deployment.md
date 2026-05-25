@@ -45,6 +45,14 @@ DATA_CRYPTO_KEY=替换为另一个长随机字符串
 npm run db:init
 ```
 
+验证数据库迁移和初始化数据：
+
+```bash
+npm run db:verify
+```
+
+`db:verify` 会重复执行 `schema.sql` 和 `seed.sql`，用于确认脚本可重复执行，并检查关键表、关键列、关键索引、初始化数据和基础 CRUD 能力。
+
 启动服务：
 
 ```bash
@@ -116,8 +124,54 @@ DATABASE_SSL_REJECT_UNAUTHORIZED=true
 ```
 
 4. 运行 `npm run db:init` 写入表结构和初始化数据。
-5. 小程序只配置后端 HTTPS 地址，不配置数据库地址。
+5. 运行 `npm run db:verify` 做迁移验证；该命令会再次执行 schema/seed 并检查幂等性。
+6. 小程序只配置后端 HTTPS 地址，不配置数据库地址。
 
+### 4.1 迁移验证流程
+
+首次接入 Kingbase 或 schema 发生变化后，建议按以下顺序验证：
+
+```bash
+cd backend
+npm install
+npm run check
+npm run db:verify
+```
+
+`npm run db:verify` 的检查范围：
+
+- 重复执行 `backend/db/schema.sql` 和 `backend/db/seed.sql`，验证脚本可重复运行。
+- 检查核心业务表是否存在，包括学生、账号、知识库、模板、党团流程、公告、审批、工作记录和操作日志。
+- 检查关键新增列是否存在，例如 `users.account_name`、`users.password_change_disabled`、学生敏感加密列、审批复核列和流程提醒记录列。
+- 检查关键索引是否存在，例如账号唯一索引、公告投递唯一索引、审批状态索引和流程提醒记录索引。
+- 检查初始化数据是否存在，包括流程节点、知识库示例、理论题库和内置超级管理员账号。
+- 创建临时表并完成一次插入和查询，确认当前账号具备基础 DDL/DML 权限。
+
+验证通过时会输出类似结果：
+
+```text
+Database migration verification passed.
+{
+  "tables": 22,
+  "columns": 24,
+  "indexes": 4,
+  "seed": {
+    "process_stages": 8,
+    "knowledge_items": 5,
+    "quiz_questions": 4,
+    "super_admin": 1
+  }
+}
+```
+
+### 4.2 失败处理和回滚建议
+
+- 如果连接失败，先检查 `DATABASE_URL`、端口、防火墙、Kingbase PostgreSQL 兼容端口和 SSL 设置。
+- 如果提示缺少 DDL 权限，给应用用户补充建表、建索引、临时表和序列权限，或改用 DBA 账号先执行 schema。
+- 如果提示缺少表、列或索引，查看 `schema.sql` 在报错前后的 SQL，修复后重新执行 `npm run db:verify`。
+- 如果 seed 数据失败，确认 `seed.sql` 是否和当前 schema 字段一致，并检查唯一约束冲突。
+- 课程演示环境可以直接清库重建；真实环境不要直接删除业务表，应先备份数据库，再按失败 SQL 编写补丁迁移。
+- 每次修改 schema 后，都应先在测试库执行 `npm run db:verify`，再更新生产库。
 正式录入学生个人信息时，优先使用 `/api/imports/students` 批量导入。模板位于 `templates/import/students_template.csv`，后端会按 `student_no` 新增或更新学生，并生成对应学号密码账号。
 
 ## 5. 关键接口
