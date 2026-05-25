@@ -26,9 +26,9 @@ insert into students (
   '在读'
 ) on conflict (student_no) do nothing;
 
-insert into users (openid, student_id, display_name, role, password_hash, must_change_password, extra_permissions)
+insert into users (account_name, student_id, display_name, role, password_hash, must_change_password, extra_permissions)
 select
-  'mock-openid-u2024001',
+  '2024001001',
   id,
   '李同学',
   'super_admin',
@@ -39,7 +39,7 @@ from students
 where student_no = '2024001001'
 on conflict (student_id)
 do update set
-  openid = coalesce(users.openid, excluded.openid),
+  account_name = coalesce(users.account_name, excluded.account_name),
   display_name = excluded.display_name,
   role = excluded.role,
   password_hash = coalesce(users.password_hash, excluded.password_hash),

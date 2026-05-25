@@ -32,6 +32,7 @@ Page({
       })
       .then(() => {
         wx.hideLoading()
+        wx.showToast({ title: '绑定成功', icon: 'success' })
         wx.reLaunch({ url: '/pages/home/home' })
       })
       .catch((error) => {

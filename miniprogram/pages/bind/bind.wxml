@@ -1,7 +1,7 @@
 <view class="page bind-page">
   <view class="page-header">
     <view class="page-title">绑定学生身份</view>
-    <view class="page-subtitle">首次微信登录需要绑定本人学号和姓名，绑定后微信账号与学生账号一对一关联。</view>
+    <view class="page-subtitle">首次注册账号需要绑定本人学号和姓名，绑定成功后可使用账号密码登录。</view>
   </view>
 
   <view class="bind-card card">
@@ -17,6 +17,6 @@
   </view>
 
   <view class="bind-note card">
-    若系统提示学生信息不存在，请确认学院已导入学生基础信息，或联系辅导员/系统管理员处理。
+    若该学生信息已绑定到更早注册的账号，系统会自动退出并删除当前较新的账号，同时登录至较旧账号。
   </view>
 </view>

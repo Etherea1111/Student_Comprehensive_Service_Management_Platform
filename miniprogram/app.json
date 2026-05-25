@@ -3,7 +3,6 @@
     "pages/login/login",
     "pages/bind/bind",
     "pages/change-password/change-password",
-    "pages/forgot-password/forgot-password",
     "pages/home/home",
     "pages/qa/qa",
     "pages/process/process",

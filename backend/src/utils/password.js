@@ -28,6 +28,14 @@ function validateStudentNo(studentNo) {
   return /^\d{10}$/.test(String(studentNo || ''))
 }
 
+function normalizeAccountName(accountName) {
+  return String(accountName || '').trim().toLowerCase()
+}
+
+function validateAccountName(accountName) {
+  return /^[a-z0-9_]{4,32}$/i.test(String(accountName || '').trim())
+}
+
 function validatePassword(password) {
   const text = String(password || '')
   return text.length >= 8 && text.length <= 64
@@ -37,5 +45,7 @@ module.exports = {
   hashPassword,
   verifyPassword,
   validateStudentNo,
+  normalizeAccountName,
+  validateAccountName,
   validatePassword
 }

@@ -264,6 +264,24 @@ async function importStudents(filePath, operator) {
         `,
         [studentResult.rows[0].id, item.name, hashPassword(initialPassword)]
       )
+      await client.query(
+        `
+          update users
+          set account_name = case
+                when exists (
+                  select 1
+                  from users other
+                  where lower(other.account_name) = lower($1)
+                    and other.id <> users.id
+                )
+                then users.account_name
+                else $1
+              end,
+              updated_at = now()
+          where student_id = $2 and account_name is null
+        `,
+        [item.studentNo, studentResult.rows[0].id]
+      )
       imported += 1
     }
   })

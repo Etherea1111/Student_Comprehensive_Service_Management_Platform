@@ -51,7 +51,7 @@ async function getProcessOverview(type, user) {
         pp.advisor
       from process_progress pp
       join users u on u.student_id = pp.student_id
-      where u.id = $1 and pp.process_type = $2
+      where u.id = $1 and u.disabled_at is null and pp.process_type = $2
     `,
     [user.id, processType]
   )

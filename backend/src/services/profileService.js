@@ -7,7 +7,7 @@ async function getMe(user) {
     `
       select
         u.id,
-        u.openid,
+        u.account_name as "accountName",
         u.role,
         s.student_no as "studentNo",
         coalesce(s.name, u.display_name) as name,
@@ -74,10 +74,17 @@ async function listManagedStudents({ keyword = '' } = {}, user) {
         s.awards,
         s.remark,
         u.role,
+        u.account_name as "accountName",
         u.extra_permissions as "extraPermissions",
         to_char(s.updated_at, 'YYYY-MM-DD HH24:MI') as "updatedAt"
       from students s
-      left join users u on u.student_id = s.id and u.disabled_at is null
+      left join lateral (
+        select role, account_name, extra_permissions
+        from users
+        where student_id = s.id and disabled_at is null
+        order by created_at asc, id asc
+        limit 1
+      ) u on true
       where ${conditions.join(' and ')}
       order by s.grade desc, s.class_name asc, s.student_no asc
       limit 100
@@ -113,6 +120,7 @@ function mapStudentRow(row, canReadSensitive) {
     awards: row.awards,
     remark: canReadSensitive ? row.remark : row.remark ? '已隐藏' : '',
     role: row.role || 'student',
+    accountName: row.accountName,
     extraPermissions: row.extraPermissions || [],
     phone: canReadSensitive ? phone : maskPhone(phone),
     idCard: canReadSensitive ? idCard : maskIdCard(idCard),

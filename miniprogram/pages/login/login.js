@@ -3,18 +3,26 @@ const api = require('../../services/request')
 
 Page({
   data: {
-    activeMode: 'wechat',
-    wechatTabClass: 'active',
-    passwordTabClass: '',
-    showWechatLogin: true,
-    showPasswordLogin: false,
+    activeMode: 'password',
+    passwordTabClass: 'active',
+    registerTabClass: '',
+    showPasswordLogin: true,
+    showRegister: false,
     showDemoEntry: false,
-    studentNo: '',
-    password: ''
+    accountName: '',
+    password: '',
+    registerAccountName: '',
+    registerPassword: '',
+    confirmPassword: '',
+    displayName: ''
   },
 
   onLoad() {
     if (authService.hasToken()) {
+      if (authService.isBindingPending()) {
+        wx.reLaunch({ url: '/pages/bind/bind' })
+        return
+      }
       this.goHome()
       return
     }
@@ -27,16 +35,16 @@ Page({
     const activeMode = event.currentTarget.dataset.mode
     this.setData({
       activeMode,
-      wechatTabClass: activeMode === 'wechat' ? 'active' : '',
       passwordTabClass: activeMode === 'password' ? 'active' : '',
-      showWechatLogin: activeMode === 'wechat',
-      showPasswordLogin: activeMode === 'password'
+      registerTabClass: activeMode === 'register' ? 'active' : '',
+      showPasswordLogin: activeMode === 'password',
+      showRegister: activeMode === 'register'
     })
   },
 
-  onStudentNoInput(event) {
+  onAccountNameInput(event) {
     this.setData({
-      studentNo: event.detail.value
+      accountName: event.detail.value
     })
   },
 
@@ -46,32 +54,25 @@ Page({
     })
   },
 
-  handleWechatLogin() {
-    wx.showLoading({ title: '正在登录' })
-    authService
-      .loginWithWechat()
-      .then((result) => {
-        wx.hideLoading()
-        if (result.bindingRequired) {
-          wx.navigateTo({
-            url: '/pages/bind/bind'
-          })
-          return
-        }
-        this.goHome()
-      })
-      .catch((error) => {
-        wx.hideLoading()
-        wx.showToast({
-          title: error.message || '微信登录失败',
-          icon: 'none'
-        })
-      })
+  onRegisterAccountNameInput(event) {
+    this.setData({ registerAccountName: event.detail.value })
+  },
+
+  onRegisterPasswordInput(event) {
+    this.setData({ registerPassword: event.detail.value })
+  },
+
+  onConfirmPasswordInput(event) {
+    this.setData({ confirmPassword: event.detail.value })
+  },
+
+  onDisplayNameInput(event) {
+    this.setData({ displayName: event.detail.value })
   },
 
   handlePasswordLogin() {
-    if (!/^\d{10}$/.test(this.data.studentNo)) {
-      wx.showToast({ title: '请输入 10 位学号', icon: 'none' })
+    if (!/^[a-zA-Z0-9_]{4,32}$/.test(this.data.accountName)) {
+      wx.showToast({ title: '请输入 4-32 位账号', icon: 'none' })
       return
     }
     if (!this.data.password) {
@@ -81,11 +82,15 @@ Page({
     wx.showLoading({ title: '正在登录' })
     authService
       .loginWithPassword({
-        studentNo: this.data.studentNo,
+        accountName: this.data.accountName,
         password: this.data.password
       })
       .then((result) => {
         wx.hideLoading()
+        if (result.bindingRequired) {
+          wx.reLaunch({ url: '/pages/bind/bind' })
+          return
+        }
         if (result.mustChangePassword) {
           wx.navigateTo({ url: '/pages/change-password/change-password?initial=1' })
           return
@@ -101,12 +106,37 @@ Page({
       })
   },
 
-  goForgotPassword() {
-    wx.navigateTo({ url: '/pages/forgot-password/forgot-password' })
-  },
-
-  goChangePassword() {
-    wx.navigateTo({ url: '/pages/change-password/change-password' })
+  handleRegister() {
+    if (!/^[a-zA-Z0-9_]{4,32}$/.test(this.data.registerAccountName)) {
+      wx.showToast({ title: '账号需为 4-32 位字母、数字或下划线', icon: 'none' })
+      return
+    }
+    if (this.data.registerPassword.length < 8 || this.data.registerPassword.length > 64) {
+      wx.showToast({ title: '密码需为 8-64 位', icon: 'none' })
+      return
+    }
+    if (this.data.registerPassword !== this.data.confirmPassword) {
+      wx.showToast({ title: '两次密码不一致', icon: 'none' })
+      return
+    }
+    wx.showLoading({ title: '正在注册' })
+    authService
+      .registerAccount({
+        accountName: this.data.registerAccountName,
+        password: this.data.registerPassword,
+        displayName: this.data.displayName
+      })
+      .then(() => {
+        wx.hideLoading()
+        wx.reLaunch({ url: '/pages/bind/bind' })
+      })
+      .catch((error) => {
+        wx.hideLoading()
+        wx.showToast({
+          title: error.message || '注册失败',
+          icon: 'none'
+        })
+      })
   },
 
   goHome() {

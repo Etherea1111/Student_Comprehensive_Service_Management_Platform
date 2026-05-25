@@ -8,7 +8,7 @@ const roles = {
 
 const currentUser = {
   id: 'u2024001',
-  openid: 'mock-openid-u2024001',
+  accountName: '2024001001',
   role: roles.SUPER_ADMIN,
   name: '李同学',
   studentNo: '2024001001',

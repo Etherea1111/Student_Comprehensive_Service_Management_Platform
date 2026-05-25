@@ -53,11 +53,14 @@ function authenticate(req, res, next) {
     const payload = jwt.verify(token, env.jwtSecret)
     req.user = {
       id: payload.sub,
-      openid: payload.openid,
+      accountName: payload.accountName,
       studentNo: payload.studentNo,
       name: payload.name,
       role: payload.role || 'student',
       permissions: resolvePermissions(payload.role || 'student', payload.permissions || [])
+    }
+    if (!req.user.studentNo && req.user.role === 'student') {
+      req.user.permissions = ['read_public']
     }
     next()
   } catch (error) {

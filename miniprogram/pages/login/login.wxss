@@ -58,8 +58,8 @@
   box-shadow: 0 6rpx 16rpx rgba(16, 24, 40, 0.08);
 }
 
-.wechat-login,
-.password-login {
+.password-login,
+.register-login {
   margin-top: 28rpx;
 }
 
