@@ -19,7 +19,7 @@ const rolePermissions = {
     'manage_permissions',
     'view_operation_records'
   ],
-  college_leader: ['read_public', 'read_sensitive', 'view_statistics', 'view_operation_records'],
+  college_leader: ['read_public', 'read_sensitive', 'approve_college_review', 'view_statistics', 'view_operation_records'],
   super_admin: ['manage_all']
 }
 
@@ -34,6 +34,7 @@ function resolvePermissions(role, extraPermissions = []) {
     permissions.add('manage_public_content')
     permissions.add('manage_process')
     permissions.add('approve_requests')
+    permissions.add('approve_college_review')
     permissions.add('import_students')
     permissions.add('import_quiz')
     permissions.add('manage_permissions')
@@ -81,6 +82,19 @@ function optionalAuthenticate(req, res, next) {
   authenticate(req, res, next)
 }
 
+
+function requireAnyPermission(permissionsRequired) {
+  return function anyPermissionMiddleware(req, res, next) {
+    const permissions = (req.user && req.user.permissions) || []
+    const hasPermission = permissionsRequired.some((permission) => permissions.includes(permission))
+    if (!hasPermission && !permissions.includes('manage_all')) {
+      next(forbidden(`Permission required: ${permissionsRequired.join(' or ')}`))
+      return
+    }
+    next()
+  }
+}
+
 function requirePermission(permission) {
   return function permissionMiddleware(req, res, next) {
     const permissions = (req.user && req.user.permissions) || []
@@ -96,6 +110,7 @@ module.exports = {
   authenticate,
   optionalAuthenticate,
   requirePermission,
+  requireAnyPermission,
   resolvePermissions,
   rolePermissions
 }

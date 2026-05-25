@@ -28,8 +28,27 @@ const stepTextMap = {
 }
 
 function canApprove(user) {
+  return canApproveCounselorStep(user) || canApproveCollegeStep(user)
+}
+
+function canApproveCounselorStep(user) {
   const permissions = (user && user.permissions) || []
   return permissions.includes('approve_requests') || permissions.includes('manage_all')
+}
+
+function canApproveCollegeStep(user) {
+  const permissions = (user && user.permissions) || []
+  return permissions.includes('approve_college_review') || permissions.includes('manage_all')
+}
+
+function canApproveCurrentStep(user, currentStep) {
+  if (currentStep === 'counselor') {
+    return canApproveCounselorStep(user)
+  }
+  if (currentStep === 'college') {
+    return canApproveCollegeStep(user)
+  }
+  return false
 }
 
 function canReadSensitive(user) {
@@ -43,6 +62,31 @@ function hasOwnRequestAccess(row, user) {
 
 function normalizeStatus(status) {
   return allowedStatuses.includes(status) ? status : ''
+}
+
+function buildApprovalScopeCondition(user) {
+  const permissions = (user && user.permissions) || []
+  if (permissions.includes('manage_all')) {
+    return '1 = 1'
+  }
+  const allowedSteps = []
+  if (permissions.includes('approve_requests')) {
+    allowedSteps.push("'counselor'")
+  }
+  if (permissions.includes('approve_college_review')) {
+    allowedSteps.push("'college'")
+  }
+  if (!allowedSteps.length) {
+    return '1 = 0'
+  }
+  return `(ar.current_step in (${allowedSteps.join(', ')}) or ar.status in ('approved', 'rejected'))`
+}
+
+function ensureStepApprovalPermission(user, currentStep) {
+  if (!canApproveCurrentStep(user, currentStep)) {
+    const stepText = stepTextMap[currentStep] || currentStep
+    throw forbidden(`${stepText} permission required`)
+  }
 }
 
 function mapRequestRow(row, user) {
@@ -62,7 +106,7 @@ function mapRequestRow(row, user) {
     canSubmit: hasOwnRequestAccess(row, user) && ['draft', 'rejected'].includes(row.status),
     canEdit: hasOwnRequestAccess(row, user) && ['draft', 'rejected'].includes(row.status),
     canWithdraw: hasOwnRequestAccess(row, user) && row.status === 'pending',
-    canApprove: canApprove(user) && row.status === 'pending',
+    canApprove: row.status === 'pending' && canApproveCurrentStep(user, row.currentStep),
     nextApprovalAction
   }
 }
@@ -85,7 +129,7 @@ async function listMyRequests(user) {
 
 async function listPendingRequests({ status, keyword } = {}, user) {
   const values = []
-  const conditions = []
+  const conditions = [buildApprovalScopeCondition(user)]
   const normalizedStatus = normalizeStatus(status)
   if (normalizedStatus) {
     values.push(normalizedStatus)
@@ -316,11 +360,9 @@ async function withdrawRequest(id, user) {
 }
 
 async function approveRequest(id, payload, user) {
-  if (!canApprove(user)) {
-    throw forbidden('approval permission required')
-  }
   await db.withTransaction(async (client) => {
     const current = await getRequestForUpdate(client, id)
+    ensureStepApprovalPermission(user, current.currentStep)
     if (current.status !== 'pending') {
       throw badRequest('only pending requests can be approved')
     }
@@ -367,6 +409,7 @@ async function rejectRequest(id, payload, user) {
   }
   await db.withTransaction(async (client) => {
     const current = await getRequestForUpdate(client, id)
+    ensureStepApprovalPermission(user, current.currentStep)
     if (current.status !== 'pending') {
       throw badRequest('only pending requests can be rejected')
     }

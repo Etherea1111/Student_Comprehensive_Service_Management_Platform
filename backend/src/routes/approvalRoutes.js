@@ -2,7 +2,7 @@ const express = require('express')
 const multer = require('multer')
 const env = require('../config/env')
 const asyncHandler = require('../utils/asyncHandler')
-const { authenticate, requirePermission } = require('../middlewares/auth')
+const { authenticate, requireAnyPermission } = require('../middlewares/auth')
 const audit = require('../middlewares/audit')
 const approvalService = require('../services/approvalService')
 const { ensureDir, getDownloadName } = require('../utils/fileStorage')
@@ -39,7 +39,7 @@ router.get(
 router.get(
   '/manage',
   authenticate,
-  requirePermission('approve_requests'),
+  requireAnyPermission(['approve_requests', 'approve_college_review']),
   asyncHandler(async (req, res) => {
     res.json({
       items: await approvalService.listPendingRequests(
@@ -122,7 +122,7 @@ router.post(
 router.post(
   '/:id/approve',
   authenticate,
-  requirePermission('approve_requests'),
+  requireAnyPermission(['approve_requests', 'approve_college_review']),
   audit('approve_request', 'approval_request'),
   asyncHandler(async (req, res) => {
     res.json(await approvalService.approveRequest(req.params.id, req.body, req.user))
@@ -132,7 +132,7 @@ router.post(
 router.post(
   '/:id/reject',
   authenticate,
-  requirePermission('approve_requests'),
+  requireAnyPermission(['approve_requests', 'approve_college_review']),
   audit('reject_request', 'approval_request'),
   asyncHandler(async (req, res) => {
     res.json(await approvalService.rejectRequest(req.params.id, req.body, req.user))
