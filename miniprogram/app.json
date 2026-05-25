@@ -4,6 +4,8 @@
     "pages/bind/bind",
     "pages/change-password/change-password",
     "pages/home/home",
+    "pages/announcements/announcements",
+    "pages/approvals/approvals",
     "pages/qa/qa",
     "pages/process/process",
     "pages/quiz/quiz",

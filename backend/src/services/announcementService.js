@@ -280,24 +280,30 @@ async function upsertAnnouncement(payload, operator) {
 }
 
 async function publishAnnouncement(id, operator) {
-  const result = await db.query(
-    `
-      update announcements
-      set status = 'published',
-          published_by = $2,
-          published_at = now(),
-          publish_at = coalesce(publish_at, now()),
-          withdrawn_at = null,
-          updated_at = now()
-      where id = $1
-      returning id, title, status, to_char(publish_at, 'YYYY-MM-DD HH24:MI') as "publishAt"
-    `,
-    [id, operator.id]
-  )
-  if (result.rowCount === 0) {
-    throw notFound('announcement not found')
-  }
-  return result.rows[0]
+  return db.withTransaction(async (client) => {
+    const result = await client.query(
+      `
+        update announcements
+        set status = 'published',
+            published_by = $2,
+            published_at = now(),
+            publish_at = coalesce(publish_at, now()),
+            withdrawn_at = null,
+            updated_at = now()
+        where id = $1
+        returning id, title, status, to_char(publish_at, 'YYYY-MM-DD HH24:MI') as "publishAt"
+      `,
+      [id, operator.id]
+    )
+    if (result.rowCount === 0) {
+      throw notFound('announcement not found')
+    }
+    const delivered = await createDeliveries(client, id)
+    return {
+      ...result.rows[0],
+      delivered
+    }
+  })
 }
 
 async function withdrawAnnouncement(id) {
@@ -471,6 +477,94 @@ function uniqueNonEmpty(values) {
     return []
   }
   return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)))
+}
+
+async function createDeliveries(client, announcementId) {
+  const result = await client.query(
+    `
+      insert into announcement_deliveries (
+        announcement_id,
+        user_id,
+        channel,
+        delivery_status,
+        delivered_at
+      )
+      select
+        $1,
+        u.id,
+        'miniprogram',
+        'delivered',
+        now()
+      from users u
+      left join students s on s.id = u.student_id and s.deleted_at is null
+      where u.disabled_at is null
+        and (
+          not exists (
+            select 1
+            from announcement_targets atg
+            where atg.announcement_id = $1
+          )
+          or exists (
+            select 1
+            from announcement_targets atg
+            where atg.announcement_id = $1
+              and atg.target_type = 'all'
+          )
+          or exists (
+            select 1
+            from announcement_targets atg
+            where atg.announcement_id = $1
+              and atg.target_type = 'role'
+              and atg.target_value = u.role
+          )
+          or exists (
+            select 1
+            from announcement_targets atg
+            where atg.announcement_id = $1
+              and atg.target_type = 'student_no'
+              and atg.target_value = s.student_no
+          )
+          or exists (
+            select 1
+            from announcement_targets atg
+            where atg.announcement_id = $1
+              and atg.target_type = 'grade'
+              and atg.target_value = s.grade
+          )
+          or exists (
+            select 1
+            from announcement_targets atg
+            where atg.announcement_id = $1
+              and atg.target_type = 'major'
+              and atg.target_value = s.major
+          )
+          or exists (
+            select 1
+            from announcement_targets atg
+            where atg.announcement_id = $1
+              and atg.target_type = 'class_name'
+              and atg.target_value = s.class_name
+          )
+          or exists (
+            select 1
+            from announcement_targets atg
+            where atg.announcement_id = $1
+              and atg.target_type = 'education_level'
+              and atg.target_value = s.education_level
+          )
+        )
+        and not exists (
+          select 1
+          from announcement_deliveries ad
+          where ad.announcement_id = $1
+            and ad.user_id = u.id
+            and ad.channel = 'miniprogram'
+        )
+      returning id
+    `,
+    [announcementId]
+  )
+  return result.rowCount
 }
 
 module.exports = {

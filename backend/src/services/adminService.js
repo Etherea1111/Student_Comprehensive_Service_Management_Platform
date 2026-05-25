@@ -6,7 +6,9 @@ async function getDashboard(user) {
     countKnowledgeItems(),
     countTemplates(),
     countProcessStages(),
-    countDraftKnowledgeItems()
+    countDraftKnowledgeItems(),
+    countAnnouncements(),
+    countPendingApprovals()
   ])
   return {
     user,
@@ -15,7 +17,9 @@ async function getDashboard(user) {
       { label: '知识库条目', value: metrics[0] },
       { label: '模板文件', value: metrics[1] },
       { label: '流程配置', value: metrics[2] },
-      { label: '待复核内容', value: metrics[3] }
+      { label: '待复核内容', value: metrics[3] },
+      { label: '公告通知', value: metrics[4] },
+      { label: '待审批事项', value: metrics[5] }
     ],
     logs: await getOperationLogs({ limit: 10 })
   }
@@ -38,6 +42,16 @@ async function countTemplates() {
 
 async function countProcessStages() {
   const result = await db.query('select count(*)::int as value from process_stages')
+  return result.rows[0].value
+}
+
+async function countAnnouncements() {
+  const result = await db.query('select count(*)::int as value from announcements')
+  return result.rows[0].value
+}
+
+async function countPendingApprovals() {
+  const result = await db.query("select count(*)::int as value from approval_requests where status = 'pending'")
   return result.rows[0].value
 }
 

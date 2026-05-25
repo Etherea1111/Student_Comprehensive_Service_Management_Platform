@@ -69,7 +69,7 @@ function fetchUploadPolicy() {
 }
 
 function getFutureModules() {
-  return futureModules
+  return futureModules.filter((item) => item.id === 'academic')
 }
 
 function uploadImportFile(kind, filePath, preview) {

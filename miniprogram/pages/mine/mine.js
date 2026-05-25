@@ -45,6 +45,7 @@ Page({
       { key: 'manage_public_content', label: '知识库与模板维护' },
       { key: 'audit_content', label: '老师复核发布' },
       { key: 'manage_process', label: '流程与进度维护' },
+      { key: 'approve_requests', label: '证明与盖章审批' },
       { key: 'read_sensitive', label: '敏感档案查看' },
       { key: 'view_operation_records', label: '操作日志查看' }
     ]
@@ -65,6 +66,18 @@ Page({
   goProcess() {
     wx.switchTab({
       url: '/pages/process/process'
+    })
+  },
+
+  goAnnouncements() {
+    wx.navigateTo({
+      url: '/pages/announcements/announcements'
+    })
+  },
+
+  goApprovals() {
+    wx.navigateTo({
+      url: '/pages/approvals/approvals'
     })
   },
 

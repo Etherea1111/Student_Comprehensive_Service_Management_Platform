@@ -268,6 +268,39 @@ const quizQuestions = [
   }
 ]
 
+const announcements = [
+  {
+    id: 'ann-scholarship-001',
+    title: '2026 年奖学金评定材料提交提醒',
+    summary: '请符合条件的同学在规定时间内提交综合测评和佐证材料。',
+    content:
+      '学院奖学金评定材料提交窗口已开放。请各班按通知要求整理成绩排名、综合测评、获奖证明等材料，逾期未提交视为放弃本轮申报。具体附件以学院正式通知为准。',
+    sourceName: '学院学生工作办公室',
+    sourceUrl: 'https://example.edu.cn/scholarship-2026',
+    priority: 'high',
+    status: 'published',
+    publishAt: '2026-05-20 09:00',
+    expireAt: '2026-06-10 18:00',
+    tags: ['奖助学金', '评奖评优'],
+    targets: [{ type: 'all', value: '全部学生' }]
+  },
+  {
+    id: 'ann-employment-001',
+    title: '计算机类实习岗位信息汇总',
+    summary: '就业办汇总近期实习招聘信息，面向计算机相关专业学生。',
+    content:
+      '就业办近期发布多家单位实习岗位信息，覆盖后端开发、测试、数据分析等方向。请有意向的同学通过官方就业平台查看岗位要求并按时投递。',
+    sourceName: '学校就业办',
+    sourceUrl: 'https://example.edu.cn/jobs',
+    priority: 'normal',
+    status: 'published',
+    publishAt: '2026-05-18 10:30',
+    expireAt: '2026-06-30 18:00',
+    tags: ['就业', '实习', '计算机类'],
+    targets: [{ type: 'major', value: '计算机科学与技术' }]
+  }
+]
+
 const adminLogs = [
   {
     id: 'log-001',
@@ -299,16 +332,16 @@ const futureModules = [
   {
     id: 'news',
     name: '信息集成与精准推送',
-    status: 'reserved',
-    api: 'services/futureService.getNewsFeeds',
-    description: '预留官方通知聚合、标签化分发、小程序消息和邮件推送接口。'
+    status: 'implemented',
+    api: 'services/announcementService',
+    description: '已支持官方通知录入、标签化分发、学生端列表和站内已读。'
   },
   {
     id: 'approval',
     name: '电子证明与审批',
-    status: 'reserved',
-    api: 'services/futureService.getApprovalRequests',
-    description: '预留证明生成、盖章申请、附件查看、分级审批和审批留痕接口。'
+    status: 'implemented',
+    api: 'services/approvalService',
+    description: '已支持证明/盖章申请、附件上传、驳回修改、审批留痕。'
   },
   {
     id: 'academic',
@@ -329,6 +362,7 @@ module.exports = {
   leagueStages,
   progressRecords,
   quizQuestions,
+  announcements,
   adminLogs,
   futureModules
 }

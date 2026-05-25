@@ -63,6 +63,22 @@
         </view>
         <text class="arrow">›</text>
       </view>
+      <view class="action-item card card-pressable" bindtap="goAnnouncements">
+        <view class="action-icon brown">通</view>
+        <view>
+          <view class="action-title">通知中心</view>
+          <view class="action-desc">查看公告、就业、实习等精准推送信息。</view>
+        </view>
+        <text class="arrow">›</text>
+      </view>
+      <view class="action-item card card-pressable" bindtap="goApprovals">
+        <view class="action-icon purple">审</view>
+        <view>
+          <view class="action-title">证明与审批</view>
+          <view class="action-desc">提交证明、盖章申请并查看审批结果。</view>
+        </view>
+        <text class="arrow">›</text>
+      </view>
       <view class="action-item card card-pressable" wx:if="{{canEnterAdmin}}" bindtap="goAdmin">
         <view class="action-icon gray">管</view>
         <view>

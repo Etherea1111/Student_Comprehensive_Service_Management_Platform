@@ -1,14 +1,12 @@
 const profileService = require('../../services/profileService')
 const processService = require('../../services/processService')
-const adminService = require('../../services/adminService')
 const authGuard = require('../../utils/authGuard')
 
 Page({
   data: {
     user: {},
     roleName: '',
-    partyReminder: null,
-    futureModules: []
+    partyReminder: null
   },
 
   onLoad() {
@@ -18,8 +16,7 @@ Page({
     profileService.fetchCurrentUser().then((user) => {
       this.setData({
         user,
-        roleName: profileService.getRoleName(user.role),
-        futureModules: adminService.getFutureModules()
+        roleName: profileService.getRoleName(user.role)
       })
     })
     processService.fetchProcessOverview('party').then((overview) => {
@@ -50,6 +47,18 @@ Page({
   goProcess() {
     wx.switchTab({
       url: '/pages/process/process'
+    })
+  },
+
+  goAnnouncements() {
+    wx.navigateTo({
+      url: '/pages/announcements/announcements'
+    })
+  },
+
+  goApprovals() {
+    wx.navigateTo({
+      url: '/pages/approvals/approvals'
     })
   }
 })

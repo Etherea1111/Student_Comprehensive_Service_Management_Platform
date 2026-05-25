@@ -1,0 +1,66 @@
+<view class="page announcements-page">
+  <view class="page-header">
+    <view class="page-title">通知中心</view>
+    <view class="page-subtitle">按标签和学生画像展示学院、就业、后勤等官方通知，支持站内已读记录。</view>
+  </view>
+
+  <view class="search-panel card">
+    <view class="search-row">
+      <input class="search-input" value="{{keyword}}" placeholder="搜索奖学金、实习、后勤等通知" confirm-type="search" bindinput="onKeywordInput" bindconfirm="onSearch" />
+      <button class="primary-button search-button" bindtap="onSearch">搜索</button>
+    </view>
+    <view class="filter-row">
+      <button class="secondary-button unread-button" bindtap="toggleUnreadOnly">{{unreadOnly ? '查看全部' : '只看未读'}}</button>
+      <scroll-view class="tag-scroll" scroll-x="true" show-scrollbar="false">
+        <view class="tag-list">
+          <view class="tag-item {{item.activeClass}}" wx:for="{{tagItems}}" wx:key="name" data-tag="{{item.name}}" bindtap="onTagTap">{{item.name}}</view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">
+      <text>通知列表</text>
+      <text class="result-count">{{announcements.length}} 条</text>
+    </view>
+    <view class="announcement-list" wx:if="{{announcements.length}}">
+      <view class="announcement-card card card-pressable" wx:for="{{announcements}}" wx:key="id" data-id="{{item.id}}" bindtap="openAnnouncement">
+        <view class="announcement-head">
+          <view>
+            <view class="announcement-title">{{item.title}}</view>
+            <view class="announcement-meta">{{item.sourceName || '官方来源'}} · {{item.publishAt || item.updatedAt}}</view>
+          </view>
+          <view class="status-tags">
+            <text class="tag {{item.priorityClass}}">{{item.priority}}</text>
+            <text class="tag {{item.readClass}}">{{item.readText}}</text>
+          </view>
+        </view>
+        <view class="announcement-summary">{{item.summary}}</view>
+        <view class="announcement-tags" wx:if="{{item.tagsText}}">
+          <text class="tag neutral">{{item.tagsText}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:else>暂无匹配通知。</view>
+  </view>
+
+  <view class="detail-mask" wx:if="{{activeAnnouncement}}" bindtap="closeDetail">
+    <view class="detail-panel card" catchtap="noop">
+      <view class="detail-head">
+        <view>
+          <view class="detail-title">{{activeAnnouncement.title}}</view>
+          <view class="detail-meta">{{activeAnnouncement.sourceName || '官方来源'}} · {{activeAnnouncement.publishAt}}</view>
+        </view>
+        <button class="text-button close-button" bindtap="closeDetail">关闭</button>
+      </view>
+      <view class="detail-content">{{activeAnnouncement.content}}</view>
+      <view class="detail-tags" wx:if="{{activeAnnouncement.tagsText}}">
+        <text class="tag neutral">{{activeAnnouncement.tagsText}}</text>
+      </view>
+      <view class="detail-actions" wx:if="{{activeAnnouncement.sourceUrl}}">
+        <button class="secondary-button source-button" data-url="{{activeAnnouncement.sourceUrl}}" bindtap="copySource">复制来源链接</button>
+      </view>
+    </view>
+  </view>
+</view>

@@ -13,6 +13,7 @@ const quizRoutes = require('./routes/quizRoutes')
 const adminRoutes = require('./routes/adminRoutes')
 const importRoutes = require('./routes/importRoutes')
 const announcementRoutes = require('./routes/announcementRoutes')
+const approvalRoutes = require('./routes/approvalRoutes')
 
 const app = express()
 
@@ -37,6 +38,7 @@ app.use(`${env.apiBasePath}/quiz`, quizRoutes)
 app.use(`${env.apiBasePath}/admin`, adminRoutes)
 app.use(`${env.apiBasePath}/imports`, importRoutes)
 app.use(`${env.apiBasePath}/announcements`, announcementRoutes)
+app.use(`${env.apiBasePath}/approvals`, approvalRoutes)
 
 app.use(errorHandler)
 

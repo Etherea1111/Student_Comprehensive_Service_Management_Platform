@@ -13,6 +13,7 @@ const rolePermissions = {
     'audit_content',
     'manage_public_content',
     'manage_process',
+    'approve_requests',
     'import_students',
     'import_quiz',
     'manage_permissions',
@@ -32,6 +33,7 @@ function resolvePermissions(role, extraPermissions = []) {
     permissions.add('audit_content')
     permissions.add('manage_public_content')
     permissions.add('manage_process')
+    permissions.add('approve_requests')
     permissions.add('import_students')
     permissions.add('import_quiz')
     permissions.add('manage_permissions')

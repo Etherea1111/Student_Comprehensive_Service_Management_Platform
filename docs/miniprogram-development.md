@@ -2,7 +2,7 @@
 
 ## 当前范围
 
-本阶段已实现 README 中优先级最高的两个模块，并补充后端落地骨架：
+本阶段已实现 README 中优先级最高的四个业务模块，并补充后端落地骨架：
 
 1. 智能问答与政策知识库
    - 关键词检索标准答复。
@@ -17,7 +17,17 @@
    - 关键节点提醒。
    - 党建与流程基础理论自测。
 
-其余模块只预留入口和服务接口，不进入当前主流程。
+3. 信息集成与精准推送
+   - 学生端通知中心，支持关键词、标签和未读筛选。
+   - 管理员端通知录入、目标人群、发布和撤回。
+   - 后端发布时写入小程序站内投递和已读记录。
+
+4. 电子证明生成与审批流程
+   - 学生端证明/盖章申请、附件选择、涉密说明、草稿和提交。
+   - 管理员端待审批列表、通过、驳回。
+   - 后端保存申请、附件、审批记录，驳回后支持原申请修改再提交。
+
+学业情况分析与预警仍为预留模块，不进入当前主流程。
 
 ## 运行方式
 
@@ -39,13 +49,17 @@ miniprogram/
   data/
     mockData.js
   pages/
-    home/       首页、核心模块入口、后续模块预留
+    home/       首页、核心模块入口
+    announcements/ 模块三：通知中心、标签筛选、已读
+    approvals/  模块四：证明和盖章申请
     qa/         模块一：智能问答、知识库、模板
     process/    模块二：党团流程、进度、提醒
     quiz/       理论自测
     mine/       我的、角色权限、隐私说明
-    admin/      管理员维护、草稿录入、日志、接口预留
+    admin/      管理员维护、公告发布、审批、草稿录入、日志
   services/
+    announcementService.js
+    approvalService.js
     knowledgeService.js
     processService.js
     quizService.js
@@ -68,11 +82,11 @@ miniprogram/
 - 学院领导
 - 超级管理员
 
-## 后续接口预留
+## 后端接口
 
 当前页面只调用 `services/` 层。现在已提供 `miniprogram/config/env.js` 和 `services/request.js`，配置后端 HTTPS 地址后，小程序会优先调用真实 API；未配置时继续使用本地数据兜底。
 
-建议接口：
+主要接口：
 
 ```text
 GET  /api/profile/me
@@ -83,14 +97,21 @@ GET  /api/processes/party/me
 GET  /api/processes/league/me
 GET  /api/quiz/questions
 POST /api/quiz/records
+GET  /api/announcements
+POST /api/announcements/:id/read
+POST /api/announcements/manage
+POST /api/announcements/:id/publish
+GET  /api/approvals/mine
+POST /api/approvals
+POST /api/approvals/:id/attachments
+GET  /api/approvals/manage
+POST /api/approvals/:id/approve
+POST /api/approvals/:id/reject
 GET  /api/admin/logs
-POST /api/files/upload-policy
 ```
 
-已占位但未实现的后续模块：
+仍预留的后续模块：
 
-- `futureService.getNewsFeeds()`：信息集成与精准推送。
-- `futureService.getApprovalRequests()`：电子证明生成与审批流程。
 - `futureService.getAcademicWarnings()`：学业情况分析与预警。
 
 ## 数据接入建议
@@ -109,4 +130,5 @@ POST /api/files/upload-policy
 - 当前已具备小程序前端和后端 API 骨架，数据可来自真实后端，也可在未配置后端时来自 `mockData.js` 和本机缓存。
 - 模板下载当前已调用 `wx.downloadFile` 和 `wx.openDocument`，示例链接不可访问时会降级为复制链接；真实环境需替换为可访问的后端签名下载链接。
 - 管理员草稿提交在配置后端后会提交到 `/api/knowledge/drafts`；未配置后端时写入本机缓存。
+- 公告与审批在未配置后端时使用本机缓存演示；生产环境需配置 HTTPS 后端和真实数据库。
 - 理论自测题库可通过后端导入接口维护，当前种子数据仍为示例题。

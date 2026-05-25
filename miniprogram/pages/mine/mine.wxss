@@ -113,6 +113,16 @@
   color: #475467;
 }
 
+.action-icon.brown {
+  background: #fff4e5;
+  color: #7a4e1d;
+}
+
+.action-icon.purple {
+  background: #f4efff;
+  color: #6941c6;
+}
+
 .action-title {
   color: #101828;
   font-size: 30rpx;

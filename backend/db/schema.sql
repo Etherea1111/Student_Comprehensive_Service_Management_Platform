@@ -239,6 +239,59 @@ create table if not exists announcement_deliveries (
 create index if not exists idx_announcement_deliveries_user on announcement_deliveries(user_id, delivery_status);
 create index if not exists idx_announcement_deliveries_announcement on announcement_deliveries(announcement_id);
 
+create table if not exists approval_requests (
+  id bigserial primary key,
+  request_no varchar(64) not null unique,
+  applicant_user_id bigint not null references users(id),
+  student_id bigint references students(id),
+  request_type varchar(32) not null,
+  title varchar(256) not null,
+  purpose text not null,
+  description text,
+  confidential_description text,
+  template_id bigint references templates(id),
+  status varchar(32) not null default 'draft',
+  current_step varchar(32) not null default 'counselor',
+  approval_level int not null default 1,
+  preview_content text,
+  rejection_reason text,
+  submitted_at timestamp,
+  approved_at timestamp,
+  rejected_at timestamp,
+  created_at timestamp not null default now(),
+  updated_at timestamp not null default now()
+);
+
+create index if not exists idx_approval_requests_applicant on approval_requests(applicant_user_id, created_at desc);
+create index if not exists idx_approval_requests_status_step on approval_requests(status, current_step, created_at desc);
+
+create table if not exists approval_attachments (
+  id bigserial primary key,
+  request_id bigint not null references approval_requests(id) on delete cascade,
+  original_name varchar(256) not null,
+  storage_path text not null,
+  file_type varchar(32) not null,
+  file_size bigint not null,
+  uploaded_by bigint references users(id),
+  created_at timestamp not null default now()
+);
+
+create index if not exists idx_approval_attachments_request on approval_attachments(request_id);
+
+create table if not exists approval_records (
+  id bigserial primary key,
+  request_id bigint not null references approval_requests(id) on delete cascade,
+  operator_id bigint references users(id),
+  operator_name varchar(64),
+  operator_role varchar(32),
+  action varchar(32) not null,
+  step varchar(32) not null,
+  comment text,
+  created_at timestamp not null default now()
+);
+
+create index if not exists idx_approval_records_request on approval_records(request_id, created_at asc);
+
 create table if not exists operation_logs (
   id bigserial primary key,
   operator_id bigint,

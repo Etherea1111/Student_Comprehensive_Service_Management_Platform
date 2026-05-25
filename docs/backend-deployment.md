@@ -15,6 +15,8 @@
 - 模板列表查询。
 - 入党/入团流程配置与个人进度查询。
 - 自测题目查询和答题记录提交。
+- 公告通知录入、标签化目标分发、站内已读记录。
+- 证明/盖章申请、附件上传、审批通过/驳回与审批记录。
 - 操作日志记录。
 - Kingbase/PostgreSQL 兼容数据库建表脚本。
 
@@ -91,6 +93,8 @@ module.exports = {
 - `process_progress`：学生个人党团进度。
 - `quiz_questions`：理论自测题库。
 - `quiz_records`：理论自测作答记录。
+- `announcements` / `announcement_tags` / `announcement_targets` / `announcement_reads` / `announcement_deliveries`：公告与站内投递。
+- `approval_requests` / `approval_attachments` / `approval_records`：证明和盖章审批。
 - `operation_logs`：后台操作日志。
 - `uploaded_files`：上传文件元数据。
 
@@ -170,6 +174,34 @@ GET /api/admin/dashboard
 GET /api/admin/logs
 GET /api/admin/upload-policy
 ```
+
+### 公告通知
+
+```text
+GET  /api/announcements?tag=&keyword=&unreadOnly=
+POST /api/announcements/:id/read
+GET  /api/announcements/manage
+POST /api/announcements/manage
+POST /api/announcements/:id/publish
+POST /api/announcements/:id/withdraw
+```
+
+公告发布后会按目标条件写入站内投递记录。当前版本完成小程序站内通知，微信订阅消息和邮件发送仍需接入学院可用通道。
+
+### 证明与审批
+
+```text
+GET  /api/approvals/mine
+POST /api/approvals
+POST /api/approvals/:id/attachments
+POST /api/approvals/:id/submit
+POST /api/approvals/:id/withdraw
+GET  /api/approvals/manage
+POST /api/approvals/:id/approve
+POST /api/approvals/:id/reject
+```
+
+盖章申请应上传附件；涉密材料可在 `confidentialDescription` 中填写说明。驳回后学生可在原申请上修改并重新提交。
 
 ### 导入
 

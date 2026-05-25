@@ -1,0 +1,85 @@
+<view class="page approvals-page">
+  <view class="page-header">
+    <view class="page-title">证明与审批</view>
+    <view class="page-subtitle">支持证明开具和盖章申请；盖章材料需上传附件，涉密材料可用文字说明替代。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title"><text>提交申请</text></view>
+    <view class="request-form card">
+      <view class="segmented">
+        <view class="segment {{proofTypeClass}}" data-type="proof" bindtap="switchType">证明开具</view>
+        <view class="segment {{sealTypeClass}}" data-type="seal" bindtap="switchType">盖章申请</view>
+      </view>
+      <view class="form-row">
+        <text class="form-label">事项标题</text>
+        <input class="form-input" value="{{form.title}}" data-field="title" placeholder="如：在读证明、政审材料盖章" bindinput="onFormInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">用途</text>
+        <input class="form-input" value="{{form.purpose}}" data-field="purpose" placeholder="如：实习入职、奖学金材料、单位政审" bindinput="onFormInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">公开说明</text>
+        <textarea class="form-textarea" value="{{form.description}}" data-field="description" placeholder="填写审批老师可直接查看的情况说明" bindinput="onFormInput"></textarea>
+      </view>
+      <view class="form-row">
+        <text class="form-label">涉密说明</text>
+        <textarea class="form-textarea small" value="{{form.confidentialDescription}}" data-field="confidentialDescription" placeholder="如附件不便上传，可在此说明材料内容和原因" bindinput="onFormInput"></textarea>
+      </view>
+      <view class="file-row">
+        <view>
+          <view class="file-title">{{selectedFileName}}</view>
+          <view class="file-desc">盖章申请建议上传 doc/docx/pdf 或图片附件。</view>
+        </view>
+        <button class="secondary-button file-button" bindtap="chooseAttachment">选择附件</button>
+      </view>
+      <view class="form-actions">
+        <button class="secondary-button action-button" bindtap="saveDraft">保存草稿</button>
+        <button class="primary-button action-button" bindtap="submitRequest">提交审批</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">
+      <text>我的申请</text>
+      <button class="text-button" bindtap="refreshRequests">刷新</button>
+    </view>
+    <view class="request-list" wx:if="{{myRequests.length}}">
+      <view class="request-card card" wx:for="{{myRequests}}" wx:key="id">
+        <view class="request-head">
+          <view data-id="{{item.id}}" bindtap="openRequest">
+            <view class="request-title">{{item.title}}</view>
+            <view class="request-meta">{{item.requestNo}} · {{item.requestTypeText}} · {{item.updatedAt}}</view>
+          </view>
+          <text class="tag {{item.statusClass}}">{{item.statusText}}</text>
+        </view>
+        <view class="request-desc">用途：{{item.purpose}}</view>
+        <view class="request-preview" wx:if="{{item.previewContent}}">{{item.previewContent}}</view>
+        <view class="reject-reason" wx:if="{{item.rejectionReason}}">驳回原因：{{item.rejectionReason}}</view>
+        <view class="request-actions">
+          <button class="secondary-button compact-button" wx:if="{{item.canEdit}}" data-id="{{item.id}}" bindtap="editRequest">修改</button>
+          <button class="secondary-button compact-button" wx:if="{{item.canWithdraw}}" data-id="{{item.id}}" bindtap="withdrawRequest">撤回</button>
+        </view>
+      </view>
+    </view>
+    <view class="empty" wx:else>暂无申请记录。</view>
+  </view>
+
+  <view class="detail-mask" wx:if="{{activeRequest}}" bindtap="closeDetail">
+    <view class="detail-panel card" catchtap="noop">
+      <view class="detail-head">
+        <view>
+          <view class="detail-title">{{activeRequest.title}}</view>
+          <view class="detail-meta">{{activeRequest.requestNo}} · {{activeRequest.statusText}}</view>
+        </view>
+        <button class="text-button close-button" bindtap="closeDetail">关闭</button>
+      </view>
+      <view class="detail-block">用途：{{activeRequest.purpose}}</view>
+      <view class="detail-block" wx:if="{{activeRequest.description}}">{{activeRequest.description}}</view>
+      <view class="detail-block sensitive" wx:if="{{activeRequest.confidentialDescription}}">{{activeRequest.confidentialDescription}}</view>
+      <view class="detail-block" wx:if="{{activeRequest.previewContent}}">{{activeRequest.previewContent}}</view>
+    </view>
+  </view>
+</view>

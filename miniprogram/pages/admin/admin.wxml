@@ -65,6 +65,20 @@
         </view>
         <text class="tag">模块二</text>
       </view>
+      <view class="manage-item card">
+        <view>
+          <view class="manage-title">公告与精准推送</view>
+          <view class="manage-desc">支持通知录入、标签、目标人群、发布、撤回和站内投递。</view>
+        </view>
+        <text class="tag">模块三</text>
+      </view>
+      <view class="manage-item card">
+        <view>
+          <view class="manage-title">证明与盖章审批</view>
+          <view class="manage-desc">支持学生申请、附件说明、审批通过、驳回修改和记录留痕。</view>
+        </view>
+        <text class="tag success">模块四</text>
+      </view>
     </view>
   </view>
 
@@ -238,6 +252,122 @@
       </view>
     </view>
     <view class="empty" wx:else>暂无模板文件。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">
+      <text>公告与精准推送</text>
+      <button class="text-button" bindtap="refreshManagedAnnouncements">刷新</button>
+    </view>
+    <view wx:if="{{dashboard.canManage}}">
+      <view class="template-form card">
+        <view class="form-row">
+          <text class="form-label">通知标题</text>
+          <input class="form-input" value="{{announcementForm.title}}" data-field="title" placeholder="如：奖学金评定材料提交提醒" bindinput="onAnnouncementInput" />
+        </view>
+        <view class="form-row">
+          <text class="form-label">摘要</text>
+          <input class="form-input" value="{{announcementForm.summary}}" data-field="summary" placeholder="用于列表展示的短摘要" bindinput="onAnnouncementInput" />
+        </view>
+        <view class="form-row">
+          <text class="form-label">正文</text>
+          <textarea class="form-textarea" value="{{announcementForm.content}}" data-field="content" placeholder="填写通知正文，来源应为学院或学校官方渠道" bindinput="onAnnouncementInput"></textarea>
+        </view>
+        <view class="form-split">
+          <view class="form-row">
+            <text class="form-label">来源单位</text>
+            <input class="form-input" value="{{announcementForm.sourceName}}" data-field="sourceName" placeholder="如：学院团委" bindinput="onAnnouncementInput" />
+          </view>
+          <view class="form-row">
+            <text class="form-label">优先级</text>
+            <input class="form-input" value="{{announcementForm.priority}}" data-field="priority" placeholder="low/normal/high/urgent" bindinput="onAnnouncementInput" />
+          </view>
+        </view>
+        <view class="form-row">
+          <text class="form-label">来源链接</text>
+          <input class="form-input" value="{{announcementForm.sourceUrl}}" data-field="sourceUrl" placeholder="https://..." bindinput="onAnnouncementInput" />
+        </view>
+        <view class="form-split">
+          <view class="form-row">
+            <text class="form-label">标签</text>
+            <input class="form-input" value="{{announcementForm.tagsText}}" data-field="tagsText" placeholder="就业,实习,计算机类" bindinput="onAnnouncementInput" />
+          </view>
+          <view class="form-row">
+            <text class="form-label">目标人群</text>
+            <input class="form-input" value="{{announcementForm.targetsText}}" data-field="targetsText" placeholder="all:全部 或 major:计算机科学与技术" bindinput="onAnnouncementInput" />
+          </view>
+        </view>
+        <view class="form-split">
+          <view class="form-row">
+            <text class="form-label">发布时间</text>
+            <input class="form-input" value="{{announcementForm.publishAt}}" data-field="publishAt" placeholder="YYYY-MM-DD HH:mm" bindinput="onAnnouncementInput" />
+          </view>
+          <view class="form-row">
+            <text class="form-label">过期时间</text>
+            <input class="form-input" value="{{announcementForm.expireAt}}" data-field="expireAt" placeholder="YYYY-MM-DD HH:mm" bindinput="onAnnouncementInput" />
+          </view>
+        </view>
+        <button class="primary-button submit-draft-button" bindtap="submitAnnouncement">保存通知草稿</button>
+      </view>
+      <view class="review-list" wx:if="{{managedAnnouncements.length}}">
+        <view class="review-card card" wx:for="{{managedAnnouncements}}" wx:key="id">
+          <view class="review-top">
+            <view>
+              <view class="review-title">{{item.title}}</view>
+              <view class="review-meta">{{item.sourceName || '未设置来源'}} · {{item.publishAt || item.updatedAt}}</view>
+            </view>
+            <text class="tag {{item.statusClass}}">{{item.statusText}}</text>
+          </view>
+          <view class="review-answer">{{item.summary || item.content}}</view>
+          <view class="review-tags" wx:if="{{item.tagsText}}">
+            <text class="tag neutral">{{item.tagsText}}</text>
+          </view>
+          <view class="review-meta" wx:if="{{item.targetsText}}">目标：{{item.targetsText}} · 已读 {{item.readCount || 0}}</view>
+          <view class="review-actions">
+            <button class="secondary-button compact-button" data-id="{{item.id}}" bindtap="editAnnouncement">编辑</button>
+            <button class="secondary-button compact-button" wx:if="{{item.canPublish}}" data-id="{{item.id}}" bindtap="publishAnnouncement">发布</button>
+            <button class="secondary-button compact-button" wx:if="{{item.canWithdraw}}" data-id="{{item.id}}" bindtap="withdrawAnnouncement">撤回</button>
+          </view>
+        </view>
+      </view>
+      <view class="empty" wx:else>暂无公告。</view>
+    </view>
+    <view class="empty" wx:else>当前角色无权维护公告。</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">
+      <text>证明与盖章审批</text>
+      <button class="text-button" bindtap="refreshManagedApprovals">刷新</button>
+    </view>
+    <view wx:if="{{canApproveRequests}}">
+      <view class="search-row card">
+        <input class="form-input" value="{{approvalKeyword}}" placeholder="按申请单号、标题、学号、姓名搜索" bindinput="onApprovalKeywordInput" />
+        <button class="secondary-button search-mini-button" bindtap="refreshManagedApprovals">搜索</button>
+      </view>
+      <view class="review-list" wx:if="{{managedApprovals.length}}">
+        <view class="review-card card" wx:for="{{managedApprovals}}" wx:key="id">
+          <view class="review-top">
+            <view>
+              <view class="review-title">{{item.title}}</view>
+              <view class="review-meta">{{item.requestNo}} · {{item.studentName}} {{item.studentNo}} · {{item.requestTypeText}}</view>
+            </view>
+            <text class="tag {{item.statusClass}}">{{item.statusText}}</text>
+          </view>
+          <view class="review-answer">用途：{{item.purpose}}</view>
+          <view class="review-answer" wx:if="{{item.description}}">{{item.description}}</view>
+          <view class="review-answer" wx:if="{{item.confidentialDescription}}">涉密说明：{{item.confidentialDescription}}</view>
+          <view class="review-answer" wx:if="{{item.previewContent}}">{{item.previewContent}}</view>
+          <view class="review-answer" wx:if="{{item.rejectionReason}}">驳回原因：{{item.rejectionReason}}</view>
+          <view class="review-actions" wx:if="{{item.canApprove}}">
+            <button class="secondary-button compact-button" data-id="{{item.id}}" bindtap="approveRequest">通过</button>
+            <button class="secondary-button compact-button" data-id="{{item.id}}" bindtap="rejectRequest">驳回</button>
+          </view>
+        </view>
+      </view>
+      <view class="empty" wx:else>暂无审批事项。</view>
+    </view>
+    <view class="empty" wx:else>当前角色无权审批证明或盖章申请。</view>
   </view>
 
   <view class="section">

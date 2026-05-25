@@ -7,11 +7,19 @@ function notImplemented(moduleName) {
 }
 
 function getNewsFeeds() {
-  return notImplemented('信息集成与精准推送')
+  return {
+    moduleName: '信息集成与精准推送',
+    status: 'implemented',
+    message: '已接入公告与站内消息服务。'
+  }
 }
 
 function getApprovalRequests() {
-  return notImplemented('电子证明与审批')
+  return {
+    moduleName: '电子证明与审批',
+    status: 'implemented',
+    message: '已接入证明/盖章申请与审批服务。'
+  }
 }
 
 function getAcademicWarnings() {

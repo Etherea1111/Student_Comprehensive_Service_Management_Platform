@@ -2,6 +2,8 @@ const adminService = require('../../services/adminService')
 const profileService = require('../../services/profileService')
 const knowledgeService = require('../../services/knowledgeService')
 const processService = require('../../services/processService')
+const announcementService = require('../../services/announcementService')
+const approvalService = require('../../services/approvalService')
 const authGuard = require('../../utils/authGuard')
 
 const emptyDraftForm = {
@@ -43,6 +45,20 @@ const emptyTemplateForm = {
   size: '',
   url: '',
   description: ''
+}
+
+const emptyAnnouncementForm = {
+  id: '',
+  title: '',
+  summary: '',
+  content: '',
+  sourceName: '',
+  sourceUrl: '',
+  priority: 'normal',
+  tagsText: '',
+  targetsText: 'all:全部',
+  publishAt: '',
+  expireAt: ''
 }
 
 const importTasks = [
@@ -107,9 +123,15 @@ Page({
     managedStudents: [],
     canAuditContent: false,
     canManageProcess: false,
+    canApproveRequests: false,
     canReadSensitive: false,
     templateForm: emptyTemplateForm,
-    managedTemplates: []
+    managedTemplates: [],
+    announcementForm: emptyAnnouncementForm,
+    managedAnnouncements: [],
+    approvalKeyword: '',
+    managedApprovals: [],
+    approvalComment: ''
   },
 
   onLoad() {
@@ -137,6 +159,7 @@ Page({
         drafts: knowledgeService.getKnowledgeDrafts(),
         canAuditContent: this.hasDashboardPermission(dashboard.user, 'audit_content'),
         canManageProcess: this.hasDashboardPermission(dashboard.user, 'manage_process'),
+        canApproveRequests: this.hasDashboardPermission(dashboard.user, 'approve_requests'),
         canReadSensitive: this.hasDashboardPermission(dashboard.user, 'read_sensitive')
       })
       this.refreshManagedKnowledge()
@@ -144,6 +167,8 @@ Page({
       this.refreshManagedStages()
       this.refreshManagedProgress()
       this.refreshManagedStudents()
+      this.refreshManagedAnnouncements()
+      this.refreshManagedApprovals()
     })
   },
 
@@ -202,6 +227,22 @@ Page({
         ...this.data.templateForm,
         [field]: event.detail.value
       }
+    })
+  },
+
+  onAnnouncementInput(event) {
+    const field = event.currentTarget.dataset.field
+    this.setData({
+      announcementForm: {
+        ...this.data.announcementForm,
+        [field]: event.detail.value
+      }
+    })
+  },
+
+  onApprovalKeywordInput(event) {
+    this.setData({
+      approvalKeyword: event.detail.value
     })
   },
 
@@ -501,6 +542,166 @@ Page({
     knowledgeService.archiveTemplate(id).then(() => {
       wx.showToast({ title: '模板已归档', icon: 'success' })
       this.refreshManagedTemplates()
+    })
+  },
+
+  refreshManagedAnnouncements() {
+    if (!this.data.dashboard.canManage) {
+      return
+    }
+    announcementService.fetchManagedAnnouncements({ status: '全部' }).then((items) => {
+      this.setData({
+        managedAnnouncements: items.map((item) => ({
+          ...item,
+          tagsText: (item.tags || []).join('、'),
+          targetsText: (item.targets || []).map((target) => `${target.type}:${target.value}`).join('、'),
+          statusText:
+            item.status === 'published'
+              ? '已发布'
+              : item.status === 'withdrawn'
+                ? '已撤回'
+                : item.status === 'archived'
+                  ? '已归档'
+                  : '草稿',
+          statusClass: item.status === 'published' ? 'success' : item.status === 'withdrawn' ? 'warn' : 'neutral',
+          canPublish: item.status !== 'published',
+          canWithdraw: item.status === 'published'
+        }))
+      })
+    })
+  },
+
+  editAnnouncement(event) {
+    const id = event.currentTarget.dataset.id
+    const item = this.data.managedAnnouncements.find((announcement) => String(announcement.id) === String(id))
+    if (!item) {
+      return
+    }
+    this.setData({
+      announcementForm: {
+        id: item.id,
+        title: item.title,
+        summary: item.summary || '',
+        content: item.content || '',
+        sourceName: item.sourceName || '',
+        sourceUrl: item.sourceUrl || '',
+        priority: item.priority || 'normal',
+        tagsText: (item.tags || []).join('，'),
+        targetsText: (item.targets || []).map((target) => `${target.type}:${target.value}`).join('，') || 'all:全部',
+        publishAt: item.publishAt || '',
+        expireAt: item.expireAt || ''
+      }
+    })
+  },
+
+  submitAnnouncement() {
+    const form = this.data.announcementForm
+    if (!form.title || !form.content) {
+      wx.showToast({ title: '请填写标题和正文', icon: 'none' })
+      return
+    }
+    announcementService
+      .saveAnnouncement({
+        id: form.id || undefined,
+        title: form.title,
+        summary: form.summary,
+        content: form.content,
+        sourceName: form.sourceName,
+        sourceUrl: form.sourceUrl,
+        priority: form.priority || 'normal',
+        status: 'draft',
+        tags: form.tagsText
+          .split(/[,，、]/)
+          .map((item) => item.trim())
+          .filter(Boolean),
+        targets: this.parseTargets(form.targetsText),
+        publishAt: form.publishAt,
+        expireAt: form.expireAt
+      })
+      .then(() => {
+        wx.showToast({ title: '通知已保存', icon: 'success' })
+        this.setData({
+          announcementForm: { ...emptyAnnouncementForm }
+        })
+        this.refreshManagedAnnouncements()
+      })
+  },
+
+  publishAnnouncement(event) {
+    const id = event.currentTarget.dataset.id
+    announcementService.publishAnnouncement(id).then((result) => {
+      wx.showToast({ title: result.delivered ? `已发布${result.delivered}人` : '已发布', icon: 'success' })
+      this.refreshManagedAnnouncements()
+    })
+  },
+
+  withdrawAnnouncement(event) {
+    const id = event.currentTarget.dataset.id
+    announcementService.withdrawAnnouncement(id).then(() => {
+      wx.showToast({ title: '已撤回', icon: 'success' })
+      this.refreshManagedAnnouncements()
+    })
+  },
+
+  parseTargets(text) {
+    const items = String(text || 'all:全部')
+      .split(/[,，、]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+    return items.map((item) => {
+      const parts = item.split(':')
+      return {
+        type: parts[0] || 'all',
+        value: parts.slice(1).join(':') || '全部'
+      }
+    })
+  },
+
+  refreshManagedApprovals() {
+    const user = this.data.dashboard.user || {}
+    if (!this.hasDashboardPermission(user, 'approve_requests')) {
+      return
+    }
+    approvalService
+      .fetchManagedRequests({
+        keyword: this.data.approvalKeyword,
+        status: '全部'
+      })
+      .then((items) => {
+        this.setData({
+          managedApprovals: items.map((item) => ({
+            ...item,
+            statusClass: item.status === 'approved' ? 'success' : item.status === 'rejected' ? 'warn' : 'neutral'
+          }))
+        })
+      })
+  },
+
+  approveRequest(event) {
+    const id = event.currentTarget.dataset.id
+    approvalService.approveRequest(id, this.data.approvalComment).then(() => {
+      wx.showToast({ title: '已通过', icon: 'success' })
+      this.setData({ approvalComment: '' })
+      this.refreshManagedApprovals()
+    })
+  },
+
+  rejectRequest(event) {
+    const id = event.currentTarget.dataset.id
+    wx.showModal({
+      title: '驳回申请',
+      editable: true,
+      placeholderText: '请填写驳回原因',
+      success: (res) => {
+        if (!res.confirm) {
+          return
+        }
+        const reason = res.content || this.data.approvalComment || '材料需修改后重新提交'
+        approvalService.rejectRequest(id, reason).then(() => {
+          wx.showToast({ title: '已驳回', icon: 'success' })
+          this.refreshManagedApprovals()
+        })
+      }
     })
   },
 

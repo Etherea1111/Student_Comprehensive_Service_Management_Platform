@@ -40,6 +40,24 @@
         <view class="module-desc">展示入党入团流程、个人阶段、待办动作和关键节点提醒。</view>
         <view class="module-foot">节点留痕提醒</view>
       </view>
+      <view class="module-card card card-pressable" bindtap="goAnnouncements">
+        <view class="module-top">
+          <view class="module-icon news">通</view>
+          <text class="tag">模块三</text>
+        </view>
+        <view class="module-title">信息集成与精准推送</view>
+        <view class="module-desc">查看官方通知、标签筛选、未读状态和来源链接。</view>
+        <view class="module-foot">站内消息已读</view>
+      </view>
+      <view class="module-card card card-pressable" bindtap="goApprovals">
+        <view class="module-top">
+          <view class="module-icon approval">审</view>
+          <text class="tag success">模块四</text>
+        </view>
+        <view class="module-title">证明生成与审批</view>
+        <view class="module-desc">提交证明或盖章申请，支持附件、涉密说明、驳回修改。</view>
+        <view class="module-foot">审批记录留痕</view>
+      </view>
     </view>
   </view>
 
@@ -59,17 +77,4 @@
     <view class="empty" wx:else>暂无待办提醒</view>
   </view>
 
-  <view class="section">
-    <view class="section-title"><text>后续模块预留</text></view>
-    <view class="reserved-list">
-      <view class="reserved-item card" wx:for="{{futureModules}}" wx:key="id">
-        <view class="reserved-top">
-          <text class="reserved-name">{{item.name}}</text>
-          <text class="tag neutral">接口预留</text>
-        </view>
-        <view class="reserved-desc">{{item.description}}</view>
-        <view class="reserved-api">{{item.api}}</view>
-      </view>
-    </view>
-  </view>
 </view>
