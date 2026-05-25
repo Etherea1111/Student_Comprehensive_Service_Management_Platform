@@ -171,6 +171,20 @@ create table if not exists process_progress (
   unique(student_id, process_type)
 );
 
+
+create table if not exists process_reminder_notifications (
+  id bigserial primary key,
+  process_progress_id bigint not null references process_progress(id) on delete cascade,
+  next_deadline date not null,
+  reminder_date date not null default current_date,
+  announcement_id bigint references announcements(id) on delete set null,
+  created_by bigint references users(id),
+  created_at timestamp not null default now(),
+  unique(process_progress_id, next_deadline, reminder_date)
+);
+
+create index if not exists idx_process_reminder_notifications_progress on process_reminder_notifications(process_progress_id, next_deadline desc);
+
 create table if not exists quiz_questions (
   id bigserial primary key,
   question_code varchar(64) unique,

@@ -62,6 +62,25 @@ router.get(
   })
 )
 
+
+router.post(
+  '/reminders/generate',
+  authenticate,
+  requirePermission('manage_process'),
+  audit('generate_process_reminders', 'process_reminder'),
+  asyncHandler(async (req, res) => {
+    res.json(
+      await processService.generateDueReminderAnnouncements(
+        {
+          processType: req.body.processType,
+          days: req.body.days
+        },
+        req.user
+      )
+    )
+  })
+)
+
 router.put(
   '/progress',
   authenticate,

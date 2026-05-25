@@ -1,5 +1,6 @@
 const db = require('../db/pool')
 const { badRequest, notFound } = require('../utils/errors')
+const announcementService = require('./announcementService')
 
 function normalizeProcessType(type) {
   if (type === '入党') {
@@ -173,6 +174,8 @@ async function listProgress({ keyword = '', processType = '' } = {}) {
   const result = await db.query(
     `
       select
+        pp.id as "progressId",
+        u.id as "userId",
         s.student_no as "studentNo",
         s.name,
         s.class_name as "className",
@@ -236,6 +239,7 @@ async function listDueReminders({ processType = '', days = 7 } = {}) {
         end as status
       from process_progress pp
       join students s on s.id = pp.student_id
+      left join users u on u.student_id = s.id and u.disabled_at is null
       left join process_stages ps on ps.process_type = pp.process_type
         and ps.stage_code = pp.current_stage_code
       where ${conditions.join(' and ')}
@@ -245,6 +249,152 @@ async function listDueReminders({ processType = '', days = 7 } = {}) {
     values
   )
   return result.rows
+}
+
+
+async function generateDueReminderAnnouncements({ processType = '', days = 7 } = {}, operator) {
+  const candidates = await listReminderCandidates({ processType, days })
+  const results = []
+  for (const item of candidates) {
+    const reserved = await reserveReminderNotification(item, operator)
+    if (!reserved) {
+      continue
+    }
+    const announcement = await announcementService.upsertAnnouncement(
+      {
+        title: buildReminderTitle(item),
+        summary: buildReminderSummary(item),
+        content: buildReminderContent(item),
+        sourceName: '????????',
+        sourceUrl: '',
+        priority: item.status === 'overdue' || item.status === 'today' ? 'high' : 'normal',
+        status: 'draft',
+        publishAt: null,
+        expireAt: item.nextDeadline,
+        tags: ['????', '????'],
+        targets: [{ type: 'student_no', value: item.studentNo }]
+      },
+      operator
+    )
+    const published = await announcementService.publishAnnouncement(announcement.id, operator)
+    await linkReminderAnnouncement(reserved.id, announcement.id)
+    results.push({
+      ...item,
+      announcementId: announcement.id,
+      delivered: published.delivered || 0
+    })
+  }
+  return {
+    scanned: candidates.length,
+    generated: results.length,
+    items: results
+  }
+}
+
+async function listReminderCandidates({ processType = '', days = 7 } = {}) {
+  const values = []
+  const conditions = [
+    's.deleted_at is null',
+    'u.id is not null',
+    'pp.next_deadline is not null',
+    `pp.next_deadline <= current_date + ($1::int * interval '1 day')`,
+    `not exists (
+      select 1
+      from process_reminder_notifications prn
+      where prn.process_progress_id = pp.id
+        and prn.next_deadline = pp.next_deadline
+        and prn.reminder_date = current_date
+    )`
+  ]
+  values.push(Number(days) >= 0 ? Number(days) : 7)
+  const normalizedType = normalizeProcessType(processType)
+  if (normalizedType) {
+    values.push(normalizedType)
+    conditions.push(`pp.process_type = $${values.length}`)
+  }
+
+  const result = await db.query(
+    `
+      select
+        pp.id as "progressId",
+        u.id as "userId",
+        s.student_no as "studentNo",
+        s.name,
+        s.class_name as "className",
+        s.grade,
+        s.major,
+        pp.process_type as "processType",
+        pp.current_stage_code as "currentStageCode",
+        ps.name as "currentStageName",
+        pp.completed_actions as "completedActions",
+        to_char(pp.next_deadline, 'YYYY-MM-DD') as "nextDeadline",
+        greatest((pp.next_deadline - current_date)::int, 0) as "daysLeft",
+        case
+          when pp.next_deadline < current_date then 'overdue'
+          when pp.next_deadline = current_date then 'today'
+          else 'upcoming'
+        end as status,
+        pp.advisor
+      from process_progress pp
+      join students s on s.id = pp.student_id
+      join users u on u.student_id = s.id and u.disabled_at is null
+      left join process_stages ps on ps.process_type = pp.process_type
+        and ps.stage_code = pp.current_stage_code
+      where ${conditions.join(' and ')}
+      order by pp.next_deadline asc, s.grade desc, s.class_name asc, s.student_no asc
+      limit 200
+    `,
+    values
+  )
+  return result.rows.map((row) => ({
+    ...row,
+    completedActions: row.completedActions || []
+  }))
+}
+
+async function reserveReminderNotification(item, operator) {
+  const result = await db.query(
+    `
+      insert into process_reminder_notifications (process_progress_id, next_deadline, created_by)
+      values ($1, $2, $3)
+      on conflict (process_progress_id, next_deadline, reminder_date) do nothing
+      returning id
+    `,
+    [item.progressId, item.nextDeadline, operator.id]
+  )
+  return result.rows[0] || null
+}
+
+async function linkReminderAnnouncement(reminderId, announcementId) {
+  await db.query(
+    `
+      update process_reminder_notifications
+      set announcement_id = $2
+      where id = $1
+    `,
+    [reminderId, announcementId]
+  )
+}
+
+function buildReminderTitle(item) {
+  const processName = item.processType === 'league' ? '????' : '????'
+  return `${processName}${item.currentStageName || item.currentStageCode}????`
+}
+
+function buildReminderSummary(item) {
+  if (item.status === 'overdue') {
+    return `??${item.currentStageName || '??'}????????? ${item.nextDeadline}????????????`
+  }
+  if (item.status === 'today') {
+    return `??${item.currentStageName || '??'}???????????????`
+  }
+  return `??${item.currentStageName || '??'}???? ${item.daysLeft} ?????????????`
+}
+
+function buildReminderContent(item) {
+  const actions = (item.completedActions || []).length ? `??????${item.completedActions.join('?')}?\n` : ''
+  const advisor = item.advisor ? `????${item.advisor}?\n` : ''
+  return `${buildReminderSummary(item)}\n\n${actions}${advisor}???????????????????????????????????????????????????????????`
 }
 
 async function upsertStudentProgress(payload, operator) {
@@ -350,5 +500,6 @@ module.exports = {
   upsertProcessConfig,
   listProgress,
   listDueReminders,
+  generateDueReminderAnnouncements,
   upsertStudentProgress
 }
