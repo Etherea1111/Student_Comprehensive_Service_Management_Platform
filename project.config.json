@@ -1,5 +1,5 @@
 {
-  "appid": "touristappid",
+  "appid": "wxe106e83f871b848b",
   "compileType": "miniprogram",
   "miniprogramRoot": "miniprogram/",
   "projectname": "student-service-platform",
@@ -24,8 +24,25 @@
       "ignore": [],
       "disablePlugins": [],
       "outputPath": ""
-    }
+    },
+    "compileWorklet": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true
   },
   "condition": {},
-  "libVersion": "3.4.5"
+  "libVersion": "3.4.5",
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {}
 }
