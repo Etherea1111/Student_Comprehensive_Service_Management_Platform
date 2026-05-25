@@ -40,6 +40,7 @@ alter table students add column if not exists remark_encrypted text;
 create table if not exists users (
   id bigserial primary key,
   account_name varchar(64),
+  wechat_openid varchar(128),
   student_id bigint unique references students(id),
   display_name varchar(64),
   role varchar(32) not null default 'student',
@@ -55,6 +56,7 @@ create table if not exists users (
 );
 
 alter table users add column if not exists account_name varchar(64);
+alter table users add column if not exists wechat_openid varchar(128);
 alter table users add column if not exists password_change_disabled boolean not null default false;
 drop index if exists idx_users_openid;
 alter table users drop column if exists openid;
@@ -71,6 +73,7 @@ set account_name = concat('user_', id)
 where account_name is null;
 
 create index if not exists idx_users_student_id on users(student_id);
+create unique index if not exists idx_users_wechat_openid on users(wechat_openid) where wechat_openid is not null;
 create unique index if not exists idx_users_account_name_lower on users(lower(account_name));
 
 create table if not exists knowledge_items (

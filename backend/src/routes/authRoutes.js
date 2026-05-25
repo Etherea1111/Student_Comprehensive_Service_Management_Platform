@@ -13,6 +13,15 @@ router.post(
   })
 )
 
+
+router.post(
+  '/wechat-login',
+  asyncHandler(async (req, res) => {
+    const result = await authService.loginWithWechat(req.body)
+    res.json(result)
+  })
+)
+
 router.post(
   '/password-login',
   asyncHandler(async (req, res) => {

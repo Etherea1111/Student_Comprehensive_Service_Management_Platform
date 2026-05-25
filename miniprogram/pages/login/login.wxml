@@ -20,7 +20,8 @@
         <text class="form-label">密码</text>
         <input class="form-input" value="{{password}}" password placeholder="请输入密码" bindinput="onPasswordInput" />
       </view>
-      <button class="primary-button full-button" bindtap="handlePasswordLogin">登录</button>
+      <button class="primary-button full-button" bindtap="handleWechatLogin">微信实名登录</button>
+      <button class="secondary-button full-button" bindtap="handlePasswordLogin">账号密码登录</button>
       <button class="secondary-button full-button" wx:if="{{showDemoEntry}}" bindtap="enterDemo">演示模式进入</button>
     </view>
 
@@ -46,6 +47,6 @@
   </view>
 
   <view class="login-note card">
-    未注册账号需先注册并绑定本人学号和姓名。已注册账号可直接使用密码登录，暂不提供找回密码功能。
+    推荐使用微信实名登录并绑定本人学号和姓名。账号密码登录保留为开发调试和备用入口，暂不提供找回密码功能。
   </view>
 </view>

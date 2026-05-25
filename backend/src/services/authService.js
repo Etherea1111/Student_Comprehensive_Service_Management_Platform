@@ -1,3 +1,4 @@
+const https = require('https')
 const jwt = require('jsonwebtoken')
 const env = require('../config/env')
 const db = require('../db/pool')
@@ -10,6 +11,120 @@ const {
   normalizeAccountName,
   validateAccountName
 } = require('../utils/password')
+
+
+async function loginWithWechat({ code, displayName } = {}) {
+  if (!code) {
+    throw badRequest('wechat login code is required')
+  }
+  const session = await exchangeWechatCode(code)
+  if (!session.openid) {
+    throw unauthorized('wechat openid is not available')
+  }
+
+  return db.withTransaction(async (client) => {
+    const existingResult = await client.query(
+      `
+        select
+          u.id,
+          u.account_name as "accountName",
+          u.role,
+          u.must_change_password as "mustChangePassword",
+          u.password_change_disabled as "passwordChangeDisabled",
+          u.extra_permissions as "extraPermissions",
+          s.student_no as "studentNo",
+          coalesce(s.name, u.display_name) as name
+        from users u
+        left join students s on s.id = u.student_id and s.deleted_at is null
+        where u.wechat_openid = $1
+          and u.disabled_at is null
+          and (u.student_id is null or s.id is not null)
+        limit 1
+      `,
+      [session.openid]
+    )
+    if (existingResult.rowCount > 0) {
+      const user = existingResult.rows[0]
+      await client.query('update users set last_login_at = now() where id = $1', [user.id])
+      return {
+        token: signToken(user),
+        user,
+        bindingRequired: user.role === 'student' && !user.studentNo
+      }
+    }
+
+    const accountName = await buildWechatAccountName(client, session.openid)
+    const result = await client.query(
+      `
+        insert into users (account_name, wechat_openid, display_name, role, must_change_password)
+        values ($1, $2, $3, 'student', false)
+        returning
+          id,
+          account_name as "accountName",
+          display_name as name,
+          role,
+          must_change_password as "mustChangePassword",
+          password_change_disabled as "passwordChangeDisabled",
+          extra_permissions as "extraPermissions"
+      `,
+      [accountName, session.openid, String(displayName || '').trim() || '????']
+    )
+    const user = result.rows[0]
+    return {
+      token: signToken(user),
+      user,
+      bindingRequired: true
+    }
+  })
+}
+
+async function exchangeWechatCode(code) {
+  if (code.startsWith('mock-') || !env.wechatAppId || !env.wechatAppSecret) {
+    return { openid: code.startsWith('mock-') ? code : `mock-openid-${code}` }
+  }
+  const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${encodeURIComponent(env.wechatAppId)}&secret=${encodeURIComponent(env.wechatAppSecret)}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`
+  const data = await getJson(url)
+  if (data.errcode) {
+    throw unauthorized(`wechat code2Session failed: ${data.errmsg || data.errcode}`)
+  }
+  return data
+}
+
+function getJson(url) {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, (res) => {
+        let raw = ''
+        res.setEncoding('utf8')
+        res.on('data', (chunk) => {
+          raw += chunk
+        })
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(raw || '{}'))
+          } catch (error) {
+            reject(error)
+          }
+        })
+      })
+      .on('error', reject)
+  })
+}
+
+async function buildWechatAccountName(client, openid) {
+  const suffix = String(openid).replace(/[^a-zA-Z0-9_]/g, '').slice(-20) || Date.now().toString(36)
+  let accountName = `wx_${suffix}`.slice(0, 32)
+  let counter = 1
+  while (true) {
+    const result = await client.query('select 1 from users where lower(account_name) = lower($1) limit 1', [accountName])
+    if (result.rowCount === 0) {
+      return accountName
+    }
+    const tail = String(counter).padStart(2, '0')
+    accountName = `wx_${suffix}`.slice(0, 32 - tail.length) + tail
+    counter += 1
+  }
+}
 
 async function registerAccount({ accountName, password, displayName }) {
   const normalizedAccountName = normalizeAccountName(accountName)
@@ -65,6 +180,7 @@ async function bindStudent({ userId, studentNo, name }) {
         select
           u.id,
           u.account_name as "accountName",
+          u.wechat_openid as "wechatOpenid",
           u.student_id as "studentId",
           u.role,
           u.must_change_password as "mustChangePassword",
@@ -122,6 +238,7 @@ async function bindStudent({ userId, studentNo, name }) {
         select
           id,
           account_name as "accountName",
+          wechat_openid as "wechatOpenid",
           role,
           must_change_password as "mustChangePassword",
           password_change_disabled as "passwordChangeDisabled",
@@ -307,6 +424,7 @@ function signToken(user) {
     {
       sub: subject,
       accountName: user.accountName,
+      wechatOpenid: user.wechatOpenid,
       studentNo: user.studentNo,
       name: user.name,
       role: user.role,
@@ -320,6 +438,7 @@ function signToken(user) {
 }
 
 module.exports = {
+  loginWithWechat,
   registerAccount,
   bindStudent,
   loginWithPassword,

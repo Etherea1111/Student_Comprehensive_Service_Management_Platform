@@ -8,7 +8,9 @@ const env = {
   jwtSecret: process.env.JWT_SECRET || 'dev-only-secret',
   uploadDir: process.env.UPLOAD_DIR || 'uploads/files',
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB || 30),
-  corsOrigin: process.env.CORS_ORIGIN || '*'
+  corsOrigin: process.env.CORS_ORIGIN || '*',
+  wechatAppId: process.env.WECHAT_APP_ID || '',
+  wechatAppSecret: process.env.WECHAT_APP_SECRET || ''
 }
 
 module.exports = env

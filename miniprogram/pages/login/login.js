@@ -70,6 +70,28 @@ Page({
     this.setData({ displayName: event.detail.value })
   },
 
+
+  handleWechatLogin() {
+    wx.showLoading({ title: '?????' })
+    authService
+      .loginWithWechat()
+      .then((result) => {
+        wx.hideLoading()
+        if (result.bindingRequired) {
+          wx.reLaunch({ url: '/pages/bind/bind' })
+          return
+        }
+        this.goHome()
+      })
+      .catch((error) => {
+        wx.hideLoading()
+        wx.showToast({
+          title: error.message || '??????',
+          icon: 'none'
+        })
+      })
+  },
+
   handlePasswordLogin() {
     if (!/^[a-zA-Z0-9_]{4,32}$/.test(this.data.accountName)) {
       wx.showToast({ title: '请输入 4-32 位账号', icon: 'none' })
