@@ -61,6 +61,18 @@ router.post(
   })
 )
 
+
+router.post(
+  '/files/import-draft',
+  authenticate,
+  requirePermission('manage_public_content'),
+  upload.single('file'),
+  audit('import_knowledge_file_draft', 'knowledge_item'),
+  asyncHandler(async (req, res) => {
+    res.status(201).json(await knowledgeService.importKnowledgeFileAsDraft(req.file, req.body, req.user))
+  })
+)
+
 router.get(
   '/files/:fileId/download',
   authenticate,

@@ -1,3 +1,6 @@
+const fs = require('fs')
+const path = require('path')
+const xlsx = require('xlsx')
 const db = require('../db/pool')
 const { badRequest, notFound } = require('../utils/errors')
 
@@ -27,6 +30,89 @@ function tokenizeKeyword(value) {
     .trim()
     .replace(/[，。；、,.?？!！;:：()（）【】\[\]\s]+/g, ' ')
   return Array.from(new Set(normalized.split(' ').map((item) => item.trim()).filter(Boolean))).slice(0, 6)
+}
+
+
+function normalizeImportedText(value) {
+  return String(value || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\t/g, ' ')
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
+function truncateText(value, maxLength = 6000) {
+  const normalized = normalizeImportedText(value)
+  if (normalized.length <= maxLength) {
+    return normalized
+  }
+  return `${normalized.slice(0, maxLength)}\n\n（内容已截断，请下载原文件核对完整文本。）`
+}
+
+function parseFileExtension(file) {
+  return String(path.extname(file.originalname || '').replace('.', '') || 'file').toLowerCase()
+}
+
+function parseWorkbookText(filePath) {
+  const workbook = xlsx.readFile(filePath, { cellDates: true })
+  return workbook.SheetNames.map((sheetName) => {
+    const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' })
+    const content = rows
+      .map((row) => row.map((cell) => String(cell || '').trim()).filter(Boolean).join(' '))
+      .filter(Boolean)
+      .join('\n')
+    return content ? `【${sheetName}】\n${content}` : ''
+  }).filter(Boolean).join('\n\n')
+}
+
+function extractKnowledgeText(file) {
+  const extension = parseFileExtension(file)
+  if (['txt', 'md', 'csv'].includes(extension)) {
+    return {
+      text: fs.readFileSync(file.path, 'utf8'),
+      supported: true
+    }
+  }
+  if (['xls', 'xlsx'].includes(extension)) {
+    return {
+      text: parseWorkbookText(file.path),
+      supported: true
+    }
+  }
+  return {
+    text: '',
+    supported: false
+  }
+}
+
+function buildImportedDraftPayload(file, body = {}, operator, extracted) {
+  const baseName = path.basename(file.originalname || '知识库导入文件', path.extname(file.originalname || ''))
+  const title = String(body.title || baseName).trim()
+  const category = String(body.category || '待分类').trim()
+  const tags = Array.from(new Set([...splitText(body.tags), '文件导入']))
+  const sourceNote = `\n\n来源文件：${file.originalname || '知识库导入文件'}`
+  const answer = extracted.supported && normalizeImportedText(extracted.text)
+    ? `${truncateText(extracted.text)}${sourceNote}`
+    : `已上传文件《${file.originalname || '知识库导入文件'}》。当前版本暂未自动解析该文件格式，请维护人员下载原文件核对正文后补充标准答复。`
+  const keywords = Array.from(new Set([
+    ...splitText(body.keywords),
+    ...tokenizeKeyword(title),
+    ...tokenizeKeyword(category),
+    ...tags
+  ])).slice(0, 10)
+
+  return {
+    title,
+    category,
+    tags,
+    keywords,
+    answer,
+    officialLink: body.officialLink || null,
+    sensitiveHint: body.sensitiveHint || (extracted.supported ? '文件解析生成草稿，请人工复核后发布。' : '该格式暂未自动解析，请人工补录正文后发布。'),
+    owner: body.owner || operator.name || '知识库维护人员'
+  }
 }
 
 function mapKnowledgeRow(row) {
@@ -277,12 +363,12 @@ async function updateKnowledgeItem(id, payload, operator) {
   })
 }
 
-async function uploadKnowledgeFile(file, operator) {
+async function uploadKnowledgeFile(file, operator, client = db) {
   if (!file || !file.path) {
     throw badRequest('file is required')
   }
-  const fileType = String(file.originalname || '').split('.').pop().toLowerCase() || 'file'
-  const result = await db.query(
+  const fileType = parseFileExtension(file)
+  const result = await client.query(
     `
       insert into uploaded_files (
         original_name,
@@ -304,6 +390,55 @@ async function uploadKnowledgeFile(file, operator) {
     [file.originalname || 'knowledge-file', file.path, fileType, file.size || 0, operator.id]
   )
   return result.rows[0]
+}
+
+async function importKnowledgeFileAsDraft(file, payload, operator) {
+  if (!file || !file.path) {
+    throw badRequest('file is required')
+  }
+  const extracted = extractKnowledgeText(file)
+  const draftPayload = buildImportedDraftPayload(file, payload, operator, extracted)
+  validateKnowledgePayload(draftPayload)
+
+  return db.withTransaction(async (client) => {
+    const uploadedFile = await uploadKnowledgeFile(file, operator, client)
+    const result = await client.query(
+      `
+        insert into knowledge_items (
+          title,
+          category,
+          tags_text,
+          keywords_text,
+          answer,
+          official_link,
+          sensitive_hint,
+          owner,
+          status,
+          created_by
+        )
+        values ($1, $2, $3, $4, $5, $6, $7, $8, 'draft', $9)
+        returning id, title, category, answer, status
+      `,
+      [
+        draftPayload.title,
+        draftPayload.category,
+        normalizeTextList(draftPayload.tags),
+        normalizeTextList(draftPayload.keywords),
+        draftPayload.answer,
+        draftPayload.officialLink || null,
+        draftPayload.sensitiveHint || null,
+        draftPayload.owner || operator.name,
+        operator.id
+      ]
+    )
+    const draft = result.rows[0]
+    await attachFiles(client, draft.id, [uploadedFile.id], operator)
+    return {
+      file: uploadedFile,
+      draft,
+      parsed: extracted.supported && Boolean(normalizeImportedText(extracted.text))
+    }
+  })
 }
 
 async function getKnowledgeFileDownload(fileId, user) {
@@ -636,6 +771,7 @@ module.exports = {
   listManagedKnowledge,
   updateKnowledgeItem,
   uploadKnowledgeFile,
+  importKnowledgeFileAsDraft,
   getKnowledgeFileDownload,
   publishDraft,
   rejectDraft,
