@@ -18,7 +18,7 @@
 - 公告通知录入、标签化目标分发、站内已读记录。
 - 证明/盖章申请、附件上传、审批通过/驳回与审批记录。
 - 操作日志记录。
-- Kingbase/PostgreSQL 兼容数据库建表脚本。
+- PostgreSQL 数据库建表脚本。
 
 ## 2. 本地启动
 
@@ -33,7 +33,7 @@ cp .env.example .env
 修改 `.env`：
 
 ```text
-DATABASE_URL=postgres://student_service:change_me@127.0.0.1:54321/student_service
+DATABASE_URL=postgres://appuser:change_me@127.0.0.1:5432/studentapp
 DATABASE_SSL=false
 JWT_SECRET=替换为长随机字符串
 DATA_CRYPTO_KEY=替换为另一个长随机字符串
@@ -106,14 +106,14 @@ module.exports = {
 - `operation_logs`：后台操作日志。
 - `uploaded_files`：上传文件元数据。
 
-人大金仓接入方式：
+PostgreSQL 接入方式：
 
-1. 在 Kingbase 中创建业务数据库和应用用户。
-2. 确认该实例开启 PostgreSQL 兼容访问能力。
+1. 在 PostgreSQL 中创建业务数据库和应用用户。
+2. 给应用用户授予当前 schema 下表和序列的读写权限。
 3. 将后端 `.env` 中的 `DATABASE_URL` 配为：
 
 ```text
-DATABASE_URL=postgres://用户名:密码@数据库地址:端口/数据库名
+DATABASE_URL=postgres://用户名:密码@数据库地址:5432/数据库名
 ```
 
 如数据库网关要求 SSL，再设置：
@@ -123,13 +123,23 @@ DATABASE_SSL=true
 DATABASE_SSL_REJECT_UNAUTHORIZED=true
 ```
 
-4. 运行 `npm run db:init` 写入表结构和初始化数据。
-5. 运行 `npm run db:verify` 做迁移验证；该命令会再次执行 schema/seed 并检查幂等性。
-6. 小程序只配置后端 HTTPS 地址，不配置数据库地址。
+4. 如果使用独立应用用户，建议执行以下授权 SQL：
+
+```sql
+grant usage on schema public to appuser;
+grant select, insert, update, delete on all tables in schema public to appuser;
+grant usage, select, update on all sequences in schema public to appuser;
+alter default privileges in schema public grant select, insert, update, delete on tables to appuser;
+alter default privileges in schema public grant usage, select, update on sequences to appuser;
+```
+
+5. 运行 `npm run db:init` 写入表结构和初始化数据。
+6. 运行 `npm run db:verify` 做迁移验证；该命令会再次执行 schema/seed 并检查幂等性。
+7. 小程序只配置后端 HTTPS 地址，不配置数据库地址。
 
 ### 4.1 迁移验证流程
 
-首次接入 Kingbase 或 schema 发生变化后，建议按以下顺序验证：
+首次接入 PostgreSQL 或 schema 发生变化后，建议按以下顺序验证：
 
 ```bash
 cd backend
@@ -166,7 +176,7 @@ Database migration verification passed.
 
 ### 4.2 失败处理和回滚建议
 
-- 如果连接失败，先检查 `DATABASE_URL`、端口、防火墙、Kingbase PostgreSQL 兼容端口和 SSL 设置。
+- 如果连接失败，先检查 `DATABASE_URL`、端口、防火墙、PostgreSQL 监听地址和 SSL 设置。
 - 如果提示缺少 DDL 权限，给应用用户补充建表、建索引、临时表和序列权限，或改用 DBA 账号先执行 schema。
 - 如果提示缺少表、列或索引，查看 `schema.sql` 在报错前后的 SQL，修复后重新执行 `npm run db:verify`。
 - 如果 seed 数据失败，确认 `seed.sql` 是否和当前 schema 字段一致，并检查唯一约束冲突。

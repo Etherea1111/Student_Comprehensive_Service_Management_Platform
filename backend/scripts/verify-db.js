@@ -43,7 +43,7 @@ const requiredColumns = {
   announcements: ['status', 'publish_at', 'expire_at'],
   announcement_deliveries: ['announcement_id', 'user_id', 'channel', 'delivery_status'],
   approval_requests: ['current_step', 'approval_level', 'approved_by', 'college_reviewed_by', 'college_reviewed_at'],
-  work_records: ['record_type', 'title', 'record_date', 'attachments']
+  work_records: ['record_type', 'title', 'occurred_at', 'materials_summary']
 }
 
 async function runSqlFile(fileName) {
