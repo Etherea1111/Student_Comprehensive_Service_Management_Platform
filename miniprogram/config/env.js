@@ -3,7 +3,7 @@ module.exports = {
   // 1. Create a cloud environment in WeChat DevTools.
   // 2. Fill cloudEnvId if DevTools does not automatically pick the default environment.
   useCloud: true,
-  cloudEnvId: '',
+  cloudEnvId: 'cloud1-d2guie8k9e950c208',
   cloudFunctionName: 'api',
 
   // Keep the server address for local DevTools debugging or future official HTTPS deployment.

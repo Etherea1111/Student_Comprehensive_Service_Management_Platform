@@ -1,5 +1,5 @@
 {
-  "appid": "wxe106e83f871b848b",
+  "appid": "wx0d7b376883c1091f",
   "compileType": "miniprogram",
   "miniprogramRoot": "miniprogram/",
   "cloudfunctionRoot": "cloudfunctions/",
@@ -39,7 +39,7 @@
     "disableSWC": true
   },
   "condition": {},
-  "libVersion": "3.4.5",
+  "libVersion": "3.16.1",
   "simulatorPluginLibVersion": {},
   "packOptions": {
     "ignore": [],
