@@ -1,7 +1,11 @@
 const env = require('../config/env')
 
+function isCloudEnabled() {
+  return Boolean(env.useCloud && typeof wx !== 'undefined' && wx.cloud && wx.cloud.callFunction)
+}
+
 function isApiEnabled() {
-  return Boolean(env.apiBaseUrl)
+  return isCloudEnabled() || Boolean(env.apiBaseUrl)
 }
 
 function getToken() {
@@ -30,6 +34,10 @@ function request(options) {
     return Promise.reject(new Error('API is not configured'))
   }
 
+  if (isCloudEnabled()) {
+    return callCloudApi(options)
+  }
+
   const token = getToken()
   return new Promise((resolve, reject) => {
     wx.request({
@@ -53,9 +61,44 @@ function request(options) {
   })
 }
 
+function callCloudApi(options) {
+  return new Promise((resolve, reject) => {
+    wx.cloud.callFunction({
+      name: env.cloudFunctionName || 'api',
+      data: {
+        url: options.url,
+        method: options.method || 'GET',
+        data: options.data || {},
+        token: getToken()
+      },
+      success: (res) => {
+        const result = res.result || {}
+        if (result.error) {
+          reject(new Error(result.error.message || 'Cloud request failed'))
+          return
+        }
+        resolve(result.data !== undefined ? result.data : result)
+      },
+      fail: reject
+    })
+  })
+}
+
 function uploadFile(options) {
   if (!isApiEnabled()) {
     return Promise.reject(new Error('API is not configured'))
+  }
+
+  if (isCloudEnabled()) {
+    return callCloudApi({
+      url: options.url,
+      method: 'UPLOAD',
+      data: {
+        filePath: options.filePath,
+        name: options.name || 'file',
+        formData: options.formData || {}
+      }
+    })
   }
 
   const token = getToken()
@@ -92,6 +135,9 @@ function buildApiUrl(path) {
   if (!isApiEnabled() || !path) {
     return ''
   }
+  if (isCloudEnabled()) {
+    return ''
+  }
   return `${env.apiBaseUrl}${path}`
 }
 
@@ -101,6 +147,7 @@ function getAuthHeader() {
 }
 
 module.exports = {
+  isCloudEnabled,
   isApiEnabled,
   buildApiUrl,
   getAuthHeader,

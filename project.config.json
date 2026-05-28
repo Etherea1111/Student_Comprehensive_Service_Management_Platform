@@ -2,6 +2,7 @@
   "appid": "wxe106e83f871b848b",
   "compileType": "miniprogram",
   "miniprogramRoot": "miniprogram/",
+  "cloudfunctionRoot": "cloudfunctions/",
   "projectname": "student-service-platform",
   "setting": {
     "urlCheck": false,

@@ -1,0 +1,9 @@
+{
+  "name": "student-service-cloud-api",
+  "version": "1.0.0",
+  "description": "Lightweight cloud development demo API for the student service miniprogram.",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
